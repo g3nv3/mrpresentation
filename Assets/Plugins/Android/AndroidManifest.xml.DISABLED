@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="com.picovr.permission.SPATIAL_DATA" />
+
+    <application>
+        <activity
+                android:name="com.unity3d.player.UnityPlayerActivity"
+                android:theme="@style/UnityThemeSelector">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
+
+        <meta-data android:name="enable_vst" android:value="1" />
+        <meta-data android:name="enable_anchor" android:value="1" />
+        <meta-data android:name="enable_spatial_anchor" android:value="1" />
+        <meta-data android:name="enable_mesh_anchor" android:value="1" />
+        <meta-data android:name="Enable_AdaptiveHandModel" android:value="1" />
+        <meta-data android:name="Hand_Tracking_HighFrequency"
+    </application>
+</manifest>

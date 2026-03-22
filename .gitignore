@@ -1,0 +1,56 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+[Uu]ser[Ss]ettings/
+
+# Unity generated files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# IDE / editor
+.idea/
+.vs/
+.vscode/
+*.DotSettings.user
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.apk
+*.aab
+*.ap_
+*.unitypackage
+*.symbols.zip
+
+# Addressables / generated data
+Assets/AddressableAssetsData/*/*.bin*
+
+# Sensitive local signing files
+*.keystore
+*.jks
+*.p12
+
+# Crash / diagnostic output
+sysinfo.txt
+
