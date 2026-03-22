@@ -6,12 +6,15 @@ public class PinchTextSpawner : MonoBehaviour
     [SerializeField] private GameObject textPrefab;
     [SerializeField] private string targetTag = "MRMesh";
     [SerializeField] private float surfaceOffset = 0.03f;
+    [SerializeField] private bool active = false;
 
     private IPicoHandInput _handInput;
 
     [Inject]
     public void Construct(IPicoHandInput handInput)
     {
+        if(!active) return;
+        
         if (_handInput != null)
             _handInput.PinchStarted -= HandlePinchStarted;
 
@@ -27,18 +30,17 @@ public class PinchTextSpawner : MonoBehaviour
         _handInput.PinchStarted -= HandlePinchStarted;
     }
 
-    private void HandlePinchStarted()
+    private void HandlePinchStarted(HandPointerTarget target)
     {
-        if (!_handInput.HasRaycastHit || textPrefab == null)
+        if (textPrefab == null || !active)
             return;
 
-        RaycastHit hit = _handInput.RaycastHit;
-        if (!hit.collider.CompareTag(targetTag))
+        if (!target.TryGetSurfacePose(targetTag, surfaceOffset, out var pose))
             return;
 
         Instantiate(
             textPrefab,
-            hit.point + hit.normal * surfaceOffset,
-            Quaternion.LookRotation(-hit.normal));
+            pose.position,
+            pose.rotation);
     }
 }

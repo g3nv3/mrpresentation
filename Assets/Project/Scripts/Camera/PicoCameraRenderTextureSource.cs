@@ -25,6 +25,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     [Header("QR")]
     [SerializeField] private bool enableQrDetection;
     [SerializeField] private float qrScanIntervalSeconds = 0.2f;
+    [SerializeField] private float qrDetectionHoldSeconds = 0.5f;
 
     [Header("Debug")]
     [SerializeField] private bool verboseLogging;
@@ -42,6 +43,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     private PicoQrCodeReader qrCodeReader;
     private IQrMarkerPlacementService qrMarkerPlacementService;
     private float nextQrMissLogTime;
+    private float lastSuccessfulQrDetectionTime = float.NegativeInfinity;
 
     private XrCameraIdPICO activeCameraId;
     private Vector2Int activeResolution;
@@ -225,6 +227,9 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         textureRenderer?.Dispose();
         textureRenderer = null;
         nextQrMissLogTime = 0f;
+        lastSuccessfulQrDetectionTime = float.NegativeInfinity;
+        lastDecodedQrText = null;
+        qrMarkerPlacementService?.ClearCurrentDetection();
 
         if (decodedQrTextLabel != null)
         {
@@ -492,16 +497,40 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
                 out var detection))
         {
             lastDecodedQrText = detection.Text;
+            lastSuccessfulQrDetectionTime = Time.unscaledTime;
+            string statusText = detection.Text;
+            string serviceStatusText = null;
+            var placementSucceeded = qrMarkerPlacementService != null &&
+                                     qrMarkerPlacementService.TryProcessDetection(detection, out serviceStatusText);
+
+            if (!string.IsNullOrWhiteSpace(serviceStatusText))
+            {
+                statusText = serviceStatusText;
+            }
+
             if (decodedQrTextLabel != null)
             {
-                decodedQrTextLabel.text = detection.Text;
+                decodedQrTextLabel.text = statusText;
             }
-            var placementSucceeded = qrMarkerPlacementService != null && qrMarkerPlacementService.TryPlaceOrUpdate(detection);
-            LogVerbose($"QR detected: {detection.Text}. Placement={placementSucceeded}");
+
+            LogVerbose($"QR detected: {detection.Text}. Interactive={placementSucceeded}. Status={statusText}");
             return;
         }
 
-        if (decodedQrTextLabel != null && enableQrDetection && string.IsNullOrEmpty(lastDecodedQrText))
+        if (!qrCodeReader.LastDecodeAttempted)
+        {
+            return;
+        }
+
+        if (Time.unscaledTime - lastSuccessfulQrDetectionTime < qrDetectionHoldSeconds)
+        {
+            return;
+        }
+
+        lastDecodedQrText = null;
+        qrMarkerPlacementService?.ClearCurrentDetection();
+
+        if (decodedQrTextLabel != null && enableQrDetection)
         {
             decodedQrTextLabel.text = "No QR detected";
         }

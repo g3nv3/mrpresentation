@@ -1,4 +1,5 @@
 public interface IQrMarkerPlacementService
 {
-    bool TryPlaceOrUpdate(in QrDetection detection);
+    bool TryProcessDetection(in QrDetection detection, out string statusText);
+    void ClearCurrentDetection();
 }

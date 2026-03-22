@@ -1,7 +1,12 @@
 public sealed class NullQrMarkerPlacementService : IQrMarkerPlacementService
 {
-    public bool TryPlaceOrUpdate(in QrDetection detection)
+    public bool TryProcessDetection(in QrDetection detection, out string statusText)
     {
+        statusText = null;
         return false;
+    }
+
+    public void ClearCurrentDetection()
+    {
     }
 }

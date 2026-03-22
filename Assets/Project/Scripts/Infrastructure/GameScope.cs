@@ -41,10 +41,12 @@ namespace Project.Scripts
             builder.Register<QrMarkerPayloadParser>(Lifetime.Singleton)
                 .As<IQrMarkerPayloadParser>();
 
-            if (hasQrPlacementDependencies)
+            if (hasQrPlacementDependencies && picoHandInput != null)
             {
                 builder.Register<QrMarkerPlacementService>(Lifetime.Singleton)
                     .As<IQrMarkerPlacementService>();
+
+                builder.RegisterEntryPoint<HandDragService>(Lifetime.Singleton);
             }
             else
             {

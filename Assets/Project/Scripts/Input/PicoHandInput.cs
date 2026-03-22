@@ -11,9 +11,15 @@ public interface IPicoHandInput
     Ray AimRay { get; }
     bool HasRaycastHit { get; }
     RaycastHit RaycastHit { get; }
+    HandPointerTarget CurrentTarget { get; }
 
-    event Action PinchStarted;
-    event Action PinchEnded;
+    bool TryGetCurrentTarget(out HandPointerTarget target);
+    bool TryGetCurrentTarget(string requiredTag, out HandPointerTarget target);
+    bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose);
+    bool TryGetCurrentSurfacePose(string requiredTag, float surfaceOffset, out Pose pose);
+
+    event Action<HandPointerTarget> PinchStarted;
+    event Action<HandPointerTarget> PinchEnded;
 }
 
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
@@ -22,6 +28,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     [SerializeField] private float pinchDistanceThreshold = 0.013f;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
+    [SerializeField] private bool debugSphere;
     [SerializeField] private Transform sphere;
 
     public bool IsTracked { get; private set; }
@@ -31,11 +38,17 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public Ray AimRay { get; private set; }
     public bool HasRaycastHit { get; private set; }
     public RaycastHit RaycastHit { get; private set; }
+    public HandPointerTarget CurrentTarget { get; private set; }
 
-    public event Action PinchStarted;
-    public event Action PinchEnded;
+    public event Action<HandPointerTarget> PinchStarted;
+    public event Action<HandPointerTarget> PinchEnded;
 
     private bool _wasPinching;
+
+    private void Start()
+    {
+        sphere.gameObject.SetActive(debugSphere);
+    }
 
     private void Update()
     {
@@ -60,8 +73,10 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         IsTracked = false;
         PinchDown = false;
         PinchUp = false;
+        AimRay = default;
         HasRaycastHit = false;
         RaycastHit = default;
+        CurrentTarget = default;
     }
 
     private bool TryReadHandState(out bool isPinching, out Ray ray)
@@ -99,10 +114,10 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         PinchUp = !isPinching && _wasPinching;
 
         if (PinchDown)
-            PinchStarted?.Invoke();
+            PinchStarted?.Invoke(CurrentTarget);
 
         if (PinchUp)
-            PinchEnded?.Invoke();
+            PinchEnded?.Invoke(CurrentTarget);
 
         _wasPinching = isPinching;
     }
@@ -116,19 +131,45 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         PinchUp = true;
         _wasPinching = false;
-        PinchEnded?.Invoke();
+        PinchEnded?.Invoke(CurrentTarget);
     }
 
     private void UpdateRaycast(Ray ray)
     {
         if (!Physics.Raycast(ray, out RaycastHit hit, rayDistance, rayMask))
+        {
+            CurrentTarget = new HandPointerTarget(ray, false, default);
             return;
+        }
 
         HasRaycastHit = true;
         RaycastHit = hit;
+        CurrentTarget = new HandPointerTarget(ray, true, hit);
 
         if (sphere != null)
             sphere.position = hit.point;
+    }
+
+    public bool TryGetCurrentTarget(out HandPointerTarget target)
+    {
+        target = CurrentTarget;
+        return target.HasHit;
+    }
+
+    public bool TryGetCurrentTarget(string requiredTag, out HandPointerTarget target)
+    {
+        target = CurrentTarget;
+        return target.HasTag(requiredTag);
+    }
+
+    public bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose)
+    {
+        return CurrentTarget.TryGetSurfacePose(surfaceOffset, out pose);
+    }
+
+    public bool TryGetCurrentSurfacePose(string requiredTag, float surfaceOffset, out Pose pose)
+    {
+        return CurrentTarget.TryGetSurfacePose(requiredTag, surfaceOffset, out pose);
     }
 
     private Vector3 ToUnityPos(Vector3f p)

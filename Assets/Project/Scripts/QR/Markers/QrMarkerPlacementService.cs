@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using UnityEngine;
@@ -5,39 +6,124 @@ using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
-public sealed class QrMarkerPlacementService : IQrMarkerPlacementService
+public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDisposable
 {
+    private const string CreatePrompt = "QR найден. Нажмите pinch, чтобы создать";
+    private const string DeletePrompt = "Модель уже создана. Нажмите pinch, чтобы удалить";
+    private const string SurfacePrompt = "QR найден, но поверхность для размещения не определена";
+
     private readonly IQrMarkerPayloadParser payloadParser;
     private readonly IQrMarkerRegistry markerRegistry;
     private readonly IQrPoseResolver poseResolver;
     private readonly IObjectResolver objectResolver;
+    private readonly IPicoHandInput handInput;
 
-    private readonly Dictionary<string, GameObject> spawnedByMarkerId = new Dictionary<string, GameObject>();
+    private readonly Dictionary<string, SpawnedMarkerState> spawnedByMarkerId =
+        new Dictionary<string, SpawnedMarkerState>(StringComparer.Ordinal);
+
+    private string currentMarkerId;
+    private Pose currentPlacementPose;
+    private bool hasCurrentPlacementPose;
 
     [Inject]
     public QrMarkerPlacementService(
         IQrMarkerPayloadParser payloadParser,
         IQrMarkerRegistry markerRegistry,
         IQrPoseResolver poseResolver,
-        IObjectResolver objectResolver)
+        IObjectResolver objectResolver,
+        IPicoHandInput handInput)
     {
         this.payloadParser = payloadParser;
         this.markerRegistry = markerRegistry;
         this.poseResolver = poseResolver;
         this.objectResolver = objectResolver;
+        this.handInput = handInput;
+
+        if (this.handInput != null)
+        {
+            this.handInput.PinchStarted += HandlePinchStarted;
+        }
     }
 
-    public bool TryPlaceOrUpdate(in QrDetection detection)
+    public bool TryProcessDetection(in QrDetection detection, out string statusText)
     {
+        statusText = null;
+        ClearCurrentDetection();
+
         if (!payloadParser.TryParse(detection.Text, out var payload))
         {
+            statusText = "QR найден, но формат не поддерживается";
             return false;
         }
 
         if (!markerRegistry.TryGet(payload.MarkerId, out var definition) || definition.Prefab == null)
         {
+            statusText = $"QR \"{payload.MarkerId}\" не зарегистрирован";
             return false;
         }
+
+        currentMarkerId = payload.MarkerId;
+
+        if (IsSpawned(payload.MarkerId))
+        {
+            statusText = DeletePrompt;
+            return true;
+        }
+
+        hasCurrentPlacementPose = TryBuildPlacementPose(definition, detection, out currentPlacementPose);
+        statusText = hasCurrentPlacementPose ? CreatePrompt : SurfacePrompt;
+        return true;
+    }
+
+    public void ClearCurrentDetection()
+    {
+        currentMarkerId = null;
+        currentPlacementPose = default;
+        hasCurrentPlacementPose = false;
+    }
+
+    public void Dispose()
+    {
+        if (handInput != null)
+        {
+            handInput.PinchStarted -= HandlePinchStarted;
+        }
+    }
+
+    private void HandlePinchStarted(HandPointerTarget target)
+    {
+        if (string.IsNullOrEmpty(currentMarkerId))
+        {
+            return;
+        }
+
+        if (target.TryGetComponentInParent<HandPinchDraggable>(out _))
+        {
+            return;
+        }
+
+        if (IsSpawned(currentMarkerId))
+        {
+            DeleteMarker(currentMarkerId);
+            return;
+        }
+
+        if (!hasCurrentPlacementPose)
+        {
+            return;
+        }
+
+        if (!markerRegistry.TryGet(currentMarkerId, out var definition) || definition.Prefab == null)
+        {
+            return;
+        }
+
+        CreateMarker(currentMarkerId, definition, currentPlacementPose);
+    }
+
+    private bool TryBuildPlacementPose(QrMarkerDefinition definition, in QrDetection detection, out Pose placementPose)
+    {
+        placementPose = default;
 
         if (!poseResolver.TryResolvePose(detection, out var markerPose))
         {
@@ -46,15 +132,48 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService
 
         var rotation = markerPose.rotation * Quaternion.Euler(definition.RotationOffset);
         var position = markerPose.position + markerPose.rotation * definition.PositionOffset;
+        placementPose = new Pose(position, rotation);
+        return true;
+    }
 
-        if (!spawnedByMarkerId.TryGetValue(payload.MarkerId, out var instance) || instance == null)
+    private void CreateMarker(string markerId, QrMarkerDefinition definition, in Pose placementPose)
+    {
+        var instance = objectResolver.Instantiate(definition.Prefab, placementPose.position, placementPose.rotation);
+        if (instance.GetComponent<HandPinchDraggable>() == null)
         {
-            instance = objectResolver.Instantiate(definition.Prefab, position, rotation);
-            spawnedByMarkerId[payload.MarkerId] = instance;
-            return true;
+            instance.AddComponent<HandPinchDraggable>();
         }
 
-        instance.transform.SetPositionAndRotation(position, rotation);
-        return true;
+        spawnedByMarkerId[markerId] = new SpawnedMarkerState(instance);
+    }
+
+    private void DeleteMarker(string markerId)
+    {
+        if (!spawnedByMarkerId.TryGetValue(markerId, out var state))
+        {
+            return;
+        }
+
+        if (state.Instance != null)
+        {
+            UnityEngine.Object.Destroy(state.Instance);
+        }
+
+        spawnedByMarkerId.Remove(markerId);
+    }
+
+    private bool IsSpawned(string markerId)
+    {
+        return spawnedByMarkerId.TryGetValue(markerId, out var state) && state.Instance != null;
+    }
+
+    private readonly struct SpawnedMarkerState
+    {
+        public readonly GameObject Instance;
+
+        public SpawnedMarkerState(GameObject instance)
+        {
+            Instance = instance;
+        }
     }
 }

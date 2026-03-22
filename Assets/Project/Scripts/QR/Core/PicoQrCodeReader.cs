@@ -111,7 +111,10 @@ public sealed class PicoQrCodeReader
             return false;
         }
 
-        var sum = Vector2.zero;
+        var minX = float.PositiveInfinity;
+        var minY = float.PositiveInfinity;
+        var maxX = float.NegativeInfinity;
+        var maxY = float.NegativeInfinity;
         var count = 0;
         for (var i = 0; i < resultPoints.Length; i++)
         {
@@ -121,7 +124,10 @@ public sealed class PicoQrCodeReader
                 continue;
             }
 
-            sum += new Vector2(point.X, point.Y);
+            minX = Mathf.Min(minX, point.X);
+            minY = Mathf.Min(minY, point.Y);
+            maxX = Mathf.Max(maxX, point.X);
+            maxY = Mathf.Max(maxY, point.Y);
             count++;
         }
 
@@ -130,7 +136,9 @@ public sealed class PicoQrCodeReader
             return false;
         }
 
-        center = sum / count;
+        // QR readers often return finder-pattern points instead of all 4 corners.
+        // Bounding-box center is less biased than averaging sparse points.
+        center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
         return true;
     }
 

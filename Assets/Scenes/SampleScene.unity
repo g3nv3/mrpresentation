@@ -421,6 +421,7 @@ MonoBehaviour:
   autoStartOnEnable: 1
   enableQrDetection: 1
   qrScanIntervalSeconds: 0.2
+  qrDetectionHoldSeconds: 0.5
   verboseLogging: 1
 --- !u!4 &707986678
 Transform:
@@ -942,7 +943,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1636572262}
-  - {fileID: 1190535096}
   - {fileID: 885296193}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1009,6 +1009,7 @@ MonoBehaviour:
   rayMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  debugSphere: 0
   sphere: {fileID: 743013651}
 --- !u!1 &993899922
 GameObject:
@@ -1317,7 +1318,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1190535096
 Transform:
   m_ObjectHideFlags: 0
@@ -1326,12 +1327,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1190535095}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 871263450}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1190535097
 MonoBehaviour:
@@ -1340,7 +1341,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1190535095}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c2fb3313719cbea48afdaa8926bf349d, type: 3}
   m_Name: 
@@ -1690,7 +1691,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::QrRaycastPoseResolver
   raycastMask:
     serializedVersion: 2
-    m_Bits: 59
+    m_Bits: 58
   maxDistance: 20
   flipHorizontal: 0
   flipVertical: 0
@@ -2635,3 +2636,4 @@ SceneRoots:
   - {fileID: 743013651}
   - {fileID: 1026296195}
   - {fileID: 707986678}
+  - {fileID: 1190535096}
