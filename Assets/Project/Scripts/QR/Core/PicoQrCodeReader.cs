@@ -111,6 +111,11 @@ public sealed class PicoQrCodeReader
             return false;
         }
 
+        if (TryGetQrFinderCenter(resultPoints, out center))
+        {
+            return true;
+        }
+
         var minX = float.PositiveInfinity;
         var minY = float.PositiveInfinity;
         var maxX = float.NegativeInfinity;
@@ -139,6 +144,38 @@ public sealed class PicoQrCodeReader
         // QR readers often return finder-pattern points instead of all 4 corners.
         // Bounding-box center is less biased than averaging sparse points.
         center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
+        return true;
+    }
+
+    private static bool TryGetQrFinderCenter(ResultPoint[] resultPoints, out Vector2 center)
+    {
+        center = default;
+
+        var validPoints = new ResultPoint[3];
+        var validCount = 0;
+        for (var i = 0; i < resultPoints.Length && validCount < validPoints.Length; i++)
+        {
+            var point = resultPoints[i];
+            if (point == null)
+            {
+                continue;
+            }
+
+            validPoints[validCount++] = point;
+        }
+
+        if (validCount < 3)
+        {
+            return false;
+        }
+
+        ResultPoint.orderBestPatterns(validPoints);
+
+        var bottomLeft = validPoints[0];
+        var topRight = validPoints[2];
+        center = new Vector2(
+            (bottomLeft.X + topRight.X) * 0.5f,
+            (bottomLeft.Y + topRight.Y) * 0.5f);
         return true;
     }
 

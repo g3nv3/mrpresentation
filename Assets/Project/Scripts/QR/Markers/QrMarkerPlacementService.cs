@@ -48,29 +48,38 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
     public bool TryProcessDetection(in QrDetection detection, out string statusText)
     {
         statusText = null;
-        ClearCurrentDetection();
 
         if (!payloadParser.TryParse(detection.Text, out var payload))
         {
+            ClearCurrentDetection();
             statusText = "QR найден, но формат не поддерживается";
             return false;
         }
 
         if (!markerRegistry.TryGet(payload.MarkerId, out var definition) || definition.Prefab == null)
         {
+            ClearCurrentDetection();
             statusText = $"QR \"{payload.MarkerId}\" не зарегистрирован";
             return false;
         }
 
-        currentMarkerId = payload.MarkerId;
+        var isSameMarker = string.Equals(currentMarkerId, payload.MarkerId, StringComparison.Ordinal);
+        if (!isSameMarker)
+        {
+            poseResolver?.ClearResolvedPose();
+            currentMarkerId = payload.MarkerId;
+            currentPlacementPose = default;
+            hasCurrentPlacementPose = false;
+        }
+
+        TryUpdateCurrentPlacementPose(definition, detection);
 
         if (IsSpawned(payload.MarkerId))
         {
-            statusText = DeletePrompt;
+            statusText = hasCurrentPlacementPose ? DeletePrompt : SurfacePrompt;
             return true;
         }
 
-        hasCurrentPlacementPose = TryBuildPlacementPose(definition, detection, out currentPlacementPose);
         statusText = hasCurrentPlacementPose ? CreatePrompt : SurfacePrompt;
         return true;
     }
@@ -80,6 +89,7 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
         currentMarkerId = null;
         currentPlacementPose = default;
         hasCurrentPlacementPose = false;
+        poseResolver?.ClearResolvedPose();
     }
 
     public void Dispose()
@@ -97,6 +107,12 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
             return;
         }
 
+        if (handInput.TryGetCurrentContact(out var contactTarget) &&
+            contactTarget.TryGetComponentInParent<HandPinchDraggable>(out _))
+        {
+            return;
+        }
+
         if (target.TryGetComponentInParent<HandPinchDraggable>(out _))
         {
             return;
@@ -108,17 +124,23 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
             return;
         }
 
-        if (!hasCurrentPlacementPose)
-        {
-            return;
-        }
-
         if (!markerRegistry.TryGet(currentMarkerId, out var definition) || definition.Prefab == null)
         {
             return;
         }
 
         CreateMarker(currentMarkerId, definition, currentPlacementPose);
+    }
+
+    private void TryUpdateCurrentPlacementPose(QrMarkerDefinition definition, in QrDetection detection)
+    {
+        if (!TryBuildPlacementPose(definition, detection, out var placementPose))
+        {
+            return;
+        }
+
+        currentPlacementPose = placementPose;
+        hasCurrentPlacementPose = true;
     }
 
     private bool TryBuildPlacementPose(QrMarkerDefinition definition, in QrDetection detection, out Pose placementPose)

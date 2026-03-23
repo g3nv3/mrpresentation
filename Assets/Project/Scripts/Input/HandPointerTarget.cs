@@ -57,3 +57,35 @@ public readonly struct HandPointerTarget
         return component != null;
     }
 }
+
+public readonly struct HandContactTarget
+{
+    public bool HasHit { get; }
+    public Collider Collider { get; }
+    public Vector3 Point { get; }
+
+    public HandContactTarget(bool hasHit, Collider collider, Vector3 point)
+    {
+        HasHit = hasHit;
+        Collider = collider;
+        Point = point;
+    }
+
+    public bool HasTag(string tag)
+    {
+        return HasHit && Collider != null && Collider.CompareTag(tag);
+    }
+
+    public bool TryGetComponentInParent<T>(out T component)
+        where T : Component
+    {
+        component = null;
+        if (!HasHit || Collider == null)
+        {
+            return false;
+        }
+
+        component = Collider.GetComponentInParent<T>();
+        return component != null;
+    }
+}

@@ -9,7 +9,6 @@ public sealed class HandDragService : ITickable
 
     private Transform activeTransform;
     private Vector3 localGrabPoint;
-    private float grabDistance;
 
     [Inject]
     public HandDragService(IPicoHandInput handInput)
@@ -36,22 +35,25 @@ public sealed class HandDragService : ITickable
             return;
         }
 
-        var ray = handInput.AimRay;
-        var targetPoint = ray.origin + ray.direction * grabDistance;
+        var targetPoint = handInput.ContactPosition;
         var worldGrabOffset = activeTransform.TransformVector(localGrabPoint);
         activeTransform.position = targetPoint - worldGrabOffset;
     }
 
-    private void HandlePinchStarted(HandPointerTarget target)
+    private void HandlePinchStarted(HandPointerTarget _)
     {
-        if (!target.TryGetComponentInParent<HandPinchDraggable>(out var draggable))
+        if (!handInput.TryGetCurrentContact(out var contactTarget))
+        {
+            return;
+        }
+
+        if (!contactTarget.TryGetComponentInParent<HandPinchDraggable>(out var draggable))
         {
             return;
         }
 
         activeTransform = draggable.transform;
-        localGrabPoint = activeTransform.InverseTransformPoint(target.Hit.point);
-        grabDistance = Mathf.Max(0.05f, Vector3.Dot(target.Hit.point - target.AimRay.origin, target.AimRay.direction));
+        localGrabPoint = activeTransform.InverseTransformPoint(contactTarget.Point);
     }
 
     private void HandlePinchEnded(HandPointerTarget _)
@@ -63,6 +65,5 @@ public sealed class HandDragService : ITickable
     {
         activeTransform = null;
         localGrabPoint = default;
-        grabDistance = 0f;
     }
 }

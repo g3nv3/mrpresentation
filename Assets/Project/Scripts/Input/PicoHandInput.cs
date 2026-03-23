@@ -8,18 +8,24 @@ public interface IPicoHandInput
     bool PinchDown { get; }
     bool PinchHeld { get; }
     bool PinchUp { get; }
+    Vector3 PinchPosition { get; }
+    Vector3 ContactPosition { get; }
     Ray AimRay { get; }
     bool HasRaycastHit { get; }
     RaycastHit RaycastHit { get; }
     HandPointerTarget CurrentTarget { get; }
+    HandContactTarget CurrentContactTarget { get; }
 
     bool TryGetCurrentTarget(out HandPointerTarget target);
     bool TryGetCurrentTarget(string requiredTag, out HandPointerTarget target);
+    bool TryGetCurrentContact(out HandContactTarget target);
     bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose);
     bool TryGetCurrentSurfacePose(string requiredTag, float surfaceOffset, out Pose pose);
 
     event Action<HandPointerTarget> PinchStarted;
     event Action<HandPointerTarget> PinchEnded;
+    event Action<HandContactTarget> ContactStarted;
+    event Action<HandContactTarget> ContactEnded;
 }
 
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
@@ -28,6 +34,11 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     [SerializeField] private float pinchDistanceThreshold = 0.013f;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
+    [SerializeField] private Transform contactPoint;
+    [SerializeField] private float contactRadius = 0.018f;
+    [SerializeField] private LayerMask contactMask = Physics.DefaultRaycastLayers;
+    [SerializeField] private bool debugContactGizmo = true;
+    [SerializeField] private Color debugContactGizmoColor = new Color(0.1f, 0.9f, 0.4f, 0.9f);
     [SerializeField] private bool debugSphere;
     [SerializeField] private Transform sphere;
 
@@ -35,35 +46,49 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public bool PinchDown { get; private set; }
     public bool PinchHeld { get; private set; }
     public bool PinchUp { get; private set; }
+    public Vector3 PinchPosition { get; private set; }
+    public Vector3 ContactPosition { get; private set; }
     public Ray AimRay { get; private set; }
     public bool HasRaycastHit { get; private set; }
     public RaycastHit RaycastHit { get; private set; }
     public HandPointerTarget CurrentTarget { get; private set; }
+    public HandContactTarget CurrentContactTarget { get; private set; }
 
     public event Action<HandPointerTarget> PinchStarted;
     public event Action<HandPointerTarget> PinchEnded;
+    public event Action<HandContactTarget> ContactStarted;
+    public event Action<HandContactTarget> ContactEnded;
 
+    private readonly Collider[] _contactHits = new Collider[16];
+    private HandPinchDraggable _currentContactDraggable;
+    private HandContactTarget _lastContactTarget;
     private bool _wasPinching;
 
     private void Start()
     {
-        sphere.gameObject.SetActive(debugSphere);
+        if (sphere != null)
+        {
+            sphere.gameObject.SetActive(debugSphere);
+        }
     }
 
     private void Update()
     {
         ResetFrameState();
 
-        if (!TryReadHandState(out bool isPinching, out Ray ray))
+        if (!TryReadHandState(out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip))
         {
+            ReleaseContactIfNeeded();
             ReleasePinchIfNeeded();
             return;
         }
 
         IsTracked = true;
-        AimRay = ray;
-
-        UpdateRaycast(ray);
+        PinchPosition = Vector3.Lerp(indexTip, thumbTip, 0.5f);
+        ContactPosition = contactPoint != null ? contactPoint.position : PinchPosition;
+        UpdateRaycast();
+        UpdateContactTarget(ContactPosition);
+        UpdateContactState();
         // Subscribers to PinchStarted read the current hit immediately.
         UpdatePinchState(isPinching);
     }
@@ -73,36 +98,35 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         IsTracked = false;
         PinchDown = false;
         PinchUp = false;
+        PinchPosition = default;
+        ContactPosition = default;
         AimRay = default;
         HasRaycastHit = false;
         RaycastHit = default;
         CurrentTarget = default;
+        CurrentContactTarget = default;
+
+        if (_currentContactDraggable != null)
+        {
+            _currentContactDraggable.HideGrabEffect();
+            _currentContactDraggable = null;
+        }
     }
 
-    private bool TryReadHandState(out bool isPinching, out Ray ray)
+    private bool TryReadHandState(out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip)
     {
         isPinching = false;
-        ray = default;
+        indexTip = default;
+        thumbTip = default;
 
         HandJointLocations joints = new HandJointLocations();
         bool ok = PXR_HandTracking.GetJointLocations(handType, ref joints);
         if (!ok || joints.jointLocations == null || joints.jointLocations.Length == 0)
             return false;
 
-        Vector3 indexTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointIndexTip].pose.Position);
-        Vector3 thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
+        indexTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointIndexTip].pose.Position);
+        thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
         isPinching = Vector3.Distance(indexTip, thumbTip) < pinchDistanceThreshold;
-
-        HandAimState aimState = new HandAimState();
-        ok = PXR_HandTracking.GetAimState(handType, ref aimState);
-        if (!ok)
-            return false;
-
-        Vector3 rayOrigin = ToUnityPos(aimState.aimRayPose.Position);
-        Quaternion rayRotation = ToUnityRot(aimState.aimRayPose.Orientation);
-        Vector3 rayDirection = (rayRotation * Vector3.forward).normalized;
-        rayOrigin += rayDirection * 0.02f;
-        ray = new Ray(rayOrigin, rayDirection);
 
         return true;
     }
@@ -134,8 +158,28 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         PinchEnded?.Invoke(CurrentTarget);
     }
 
-    private void UpdateRaycast(Ray ray)
+    private void ReleaseContactIfNeeded()
     {
+        if (!_lastContactTarget.HasHit || _lastContactTarget.Collider == null)
+        {
+            return;
+        }
+
+        ContactEnded?.Invoke(_lastContactTarget);
+        _lastContactTarget = default;
+    }
+
+    private void UpdateRaycast()
+    {
+        if (!TryReadAimRay(out var ray))
+        {
+            AimRay = default;
+            CurrentTarget = new HandPointerTarget(default, false, default);
+            return;
+        }
+
+        AimRay = ray;
+
         if (!Physics.Raycast(ray, out RaycastHit hit, rayDistance, rayMask))
         {
             CurrentTarget = new HandPointerTarget(ray, false, default);
@@ -162,6 +206,12 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         return target.HasTag(requiredTag);
     }
 
+    public bool TryGetCurrentContact(out HandContactTarget target)
+    {
+        target = CurrentContactTarget;
+        return target.HasHit;
+    }
+
     public bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose)
     {
         return CurrentTarget.TryGetSurfacePose(surfaceOffset, out pose);
@@ -180,5 +230,116 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     private Quaternion ToUnityRot(Quatf q)
     {
         return new Quaternion(-q.x, -q.y, q.z, q.w);
+    }
+
+    private bool TryReadAimRay(out Ray ray)
+    {
+        ray = default;
+
+        HandAimState aimState = new HandAimState();
+        if (!PXR_HandTracking.GetAimState(handType, ref aimState))
+        {
+            return false;
+        }
+
+        Vector3 rayOrigin = ToUnityPos(aimState.aimRayPose.Position);
+        Quaternion rayRotation = ToUnityRot(aimState.aimRayPose.Orientation);
+        Vector3 rayDirection = (rayRotation * Vector3.forward).normalized;
+        rayOrigin += rayDirection * 0.02f;
+        ray = new Ray(rayOrigin, rayDirection);
+        return true;
+    }
+
+    private void UpdateContactTarget(Vector3 samplePosition)
+    {
+        var bestDistance = float.PositiveInfinity;
+        Collider bestCollider = null;
+        var bestPoint = Vector3.zero;
+
+        EvaluateContact(samplePosition, ref bestDistance, ref bestCollider, ref bestPoint);
+
+        CurrentContactTarget = bestCollider == null
+            ? default
+            : new HandContactTarget(true, bestCollider, bestPoint);
+
+        HandPinchDraggable nextDraggable = null;
+        CurrentContactTarget.TryGetComponentInParent(out nextDraggable);
+        if (_currentContactDraggable == nextDraggable)
+        {
+            return;
+        }
+
+        _currentContactDraggable?.HideGrabEffect();
+        _currentContactDraggable = nextDraggable;
+        _currentContactDraggable?.ShowGrabEffect();
+    }
+
+    private void UpdateContactState()
+    {
+        var hadContact = _lastContactTarget.HasHit && _lastContactTarget.Collider != null;
+        var hasContact = CurrentContactTarget.HasHit && CurrentContactTarget.Collider != null;
+        var sameCollider = hadContact &&
+                           hasContact &&
+                           _lastContactTarget.Collider == CurrentContactTarget.Collider;
+
+        if (hadContact && !sameCollider)
+        {
+            ContactEnded?.Invoke(_lastContactTarget);
+        }
+
+        if (hasContact && !sameCollider)
+        {
+            ContactStarted?.Invoke(CurrentContactTarget);
+        }
+
+        _lastContactTarget = hasContact ? CurrentContactTarget : default;
+    }
+
+    private void EvaluateContact(
+        Vector3 samplePosition,
+        ref float bestDistance,
+        ref Collider bestCollider,
+        ref Vector3 bestPoint)
+    {
+        var hitCount = Physics.OverlapSphereNonAlloc(
+            samplePosition,
+            contactRadius,
+            _contactHits,
+            contactMask.value == 0 ? Physics.DefaultRaycastLayers : contactMask,
+            QueryTriggerInteraction.Ignore);
+
+        for (var i = 0; i < hitCount; i++)
+        {
+            var collider = _contactHits[i];
+            if (collider == null)
+            {
+                continue;
+            }
+
+            var closestPoint = collider.ClosestPoint(samplePosition);
+            var distance = (closestPoint - samplePosition).sqrMagnitude;
+            if (distance >= bestDistance)
+            {
+                continue;
+            }
+
+            bestDistance = distance;
+            bestCollider = collider;
+            bestPoint = closestPoint;
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!debugContactGizmo)
+        {
+            return;
+        }
+
+        var gizmoPosition = contactPoint != null ? contactPoint.position : transform.position;
+        var previousColor = Gizmos.color;
+        Gizmos.color = debugContactGizmoColor;
+        Gizmos.DrawWireSphere(gizmoPosition, contactRadius);
+        Gizmos.color = previousColor;
     }
 }
