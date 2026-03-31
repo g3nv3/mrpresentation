@@ -16,9 +16,8 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     [SerializeField] private RawImage previewRawImage;
     [SerializeField] private TMP_Text decodedQrTextLabel;
 
-    [Header("Preferred Camera Config")]
+    [Header("Camera Config")]
     [SerializeField] private XrCameraIdPICO preferredCameraId = XrCameraIdPICO.XR_CAMERA_ID_RGB_LEFT_PICO;
-    [SerializeField] private Vector2Int preferredResolution = new Vector2Int(640, 480);
     [SerializeField] private XrCameraImageFpsPICO preferredFps = XrCameraImageFpsPICO.XR_CAMERA_IMAGE_FPS_30_PICO;
     [SerializeField] private bool autoStartOnEnable = true;
 
@@ -26,6 +25,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     [SerializeField] private bool enableQrDetection;
     [SerializeField] private float qrScanIntervalSeconds = 0.2f;
     [SerializeField] private float qrDetectionHoldSeconds = 0.5f;
+    [SerializeField] private bool clearDetectionOnQrLoss;
 
     [Header("Debug")]
     [SerializeField] private bool verboseLogging;
@@ -165,7 +165,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
                 ActiveTransferType,
                 ActiveModel,
                 initializationCts.Token);
-
+            
             if (createSessionResult != PxrResult.SUCCESS)
             {
                 LogError($"CreateCameraCaptureSessionAsync failed: {createSessionResult}");
@@ -243,7 +243,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         out XrCameraImageFpsPICO fps)
     {
         cameraId = preferredCameraId;
-        resolution = preferredResolution;
+        resolution = default;
         fps = preferredFps;
 
         var cameraResult = PXR_CameraImage.GetAvailableCameras(out var availableCameras);
@@ -291,7 +291,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
 
     private bool TryResolveResolution(XrCameraIdPICO cameraId, out Vector2Int resolution)
     {
-        resolution = preferredResolution;
+        resolution = default;
 
         var result = PXR_CameraImage.GetCameraImageResolutionCapability(cameraId, out var resolutions);
         if (result != PxrResult.SUCCESS || resolutions == null || resolutions.Length == 0)
@@ -301,19 +301,8 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         }
 
         LogVerbose($"Supported resolutions for {cameraId}: {string.Join(", ", resolutions.Select(r => $"{r.width}x{r.height}"))}");
-
-        foreach (var item in resolutions)
-        {
-            if (item.width == preferredResolution.x && item.height == preferredResolution.y)
-            {
-                resolution = new Vector2Int(item.width, item.height);
-                return true;
-            }
-        }
-
-        // Если предпочтительное разрешение не поддерживается, берём первый вариант из capability list.
         resolution = new Vector2Int(resolutions[0].width, resolutions[0].height);
-        LogVerbose($"Preferred resolution is unsupported. Falling back to {resolution.x}x{resolution.y}.");
+        LogVerbose($"Selected resolution: {resolution.x}x{resolution.y}.");
         return true;
     }
 
@@ -491,6 +480,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
                 frame.Height,
                 frame.Stride,
                 frame.BytesPerPixel,
+                activeCameraId,
                 Time.unscaledTime,
                 frame.CaptureTime,
                 frame.ImageId,
@@ -523,6 +513,11 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         }
 
         if (Time.unscaledTime - lastSuccessfulQrDetectionTime < qrDetectionHoldSeconds)
+        {
+            return;
+        }
+
+        if (!clearDetectionOnQrLoss)
         {
             return;
         }

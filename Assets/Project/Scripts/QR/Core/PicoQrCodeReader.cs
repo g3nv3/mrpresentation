@@ -2,6 +2,7 @@ using System;
 using ZXing;
 using ZXing.Common;
 using UnityEngine;
+using Unity.XR.PXR;
 
 public sealed class PicoQrCodeReader
 {
@@ -34,6 +35,7 @@ public sealed class PicoQrCodeReader
             {
                 PossibleFormats = new[] { BarcodeFormat.QR_CODE },
                 TryHarder = true,
+                TryInverted = true,
                 PureBarcode = false
             }
         };
@@ -45,6 +47,7 @@ public sealed class PicoQrCodeReader
         int height,
         int stride,
         int bytesPerPixel,
+        XrCameraIdPICO cameraId,
         float currentTimeSeconds,
         long captureTime,
         ulong imageId,
@@ -87,11 +90,14 @@ public sealed class PicoQrCodeReader
             return false;
         }
 
-        var imageCenter = TryGetImageCenter(result, out var center);
+        var imageResultPoints = ExtractImageResultPoints(result.ResultPoints);
+        var hasImageCenter = TryGetImageCenter(result.ResultPoints, out var imageCenter);
         detection = new QrDetection(
             result.Text,
+            cameraId,
+            hasImageCenter,
             imageCenter,
-            center,
+            imageResultPoints,
             width,
             height,
             captureTime,
@@ -102,10 +108,9 @@ public sealed class PicoQrCodeReader
         return true;
     }
 
-    private static bool TryGetImageCenter(Result result, out Vector2 center)
+    private static bool TryGetImageCenter(ResultPoint[] resultPoints, out Vector2 center)
     {
         center = default;
-        var resultPoints = result.ResultPoints;
         if (resultPoints == null || resultPoints.Length == 0)
         {
             return false;
@@ -141,10 +146,45 @@ public sealed class PicoQrCodeReader
             return false;
         }
 
-        // QR readers often return finder-pattern points instead of all 4 corners.
-        // Bounding-box center is less biased than averaging sparse points.
         center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
         return true;
+    }
+
+    private static Vector2[] ExtractImageResultPoints(ResultPoint[] resultPoints)
+    {
+        if (resultPoints == null || resultPoints.Length == 0)
+        {
+            return null;
+        }
+
+        var validCount = 0;
+        for (var i = 0; i < resultPoints.Length; i++)
+        {
+            if (resultPoints[i] != null)
+            {
+                validCount++;
+            }
+        }
+
+        if (validCount == 0)
+        {
+            return null;
+        }
+
+        var imageResultPoints = new Vector2[validCount];
+        var pointIndex = 0;
+        for (var i = 0; i < resultPoints.Length; i++)
+        {
+            var point = resultPoints[i];
+            if (point == null)
+            {
+                continue;
+            }
+
+            imageResultPoints[pointIndex++] = new Vector2(point.X, point.Y);
+        }
+
+        return imageResultPoints;
     }
 
     private static bool TryGetQrFinderCenter(ResultPoint[] resultPoints, out Vector2 center)

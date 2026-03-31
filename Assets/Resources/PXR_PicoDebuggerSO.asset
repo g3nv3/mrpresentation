@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d84923cab4d03452a8a3b80e3386b9b4, type: 3}
   m_Name: PXR_PicoDebuggerSO
   m_EditorClassIdentifier: Unity.XR.PICO::Unity.XR.PXR.Debugger.PXR_PicoDebuggerSO
-  isOpen: 0
-  debuggerLauncherButton: 0
+  isOpen: 1
+  debuggerLauncherButton: 2
   startPosition: 0
   maxInfoCount: 0
-  rulerClearButton: 0
+  rulerClearButton: 2

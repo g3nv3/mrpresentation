@@ -416,12 +416,12 @@ MonoBehaviour:
   previewRawImage: {fileID: 525994596}
   decodedQrTextLabel: {fileID: 1145447855}
   preferredCameraId: 1
-  preferredResolution: {x: 640, y: 480}
   preferredFps: 1
   autoStartOnEnable: 1
   enableQrDetection: 1
-  qrScanIntervalSeconds: 0.2
-  qrDetectionHoldSeconds: 0.4
+  qrScanIntervalSeconds: 0.08
+  qrDetectionHoldSeconds: 1.5
+  clearDetectionOnQrLoss: 0
   verboseLogging: 1
 --- !u!4 &707986678
 Transform:
@@ -770,7 +770,7 @@ Transform:
   m_GameObject: {fileID: 743013647}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.29451, y: 0.18296, z: 0.31298}
+  m_LocalPosition: {x: 0.807, y: 0.18296, z: -0.506}
   m_LocalScale: {x: 0.05, y: 0.05, z: 0.05}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1441,7 +1441,7 @@ Transform:
   m_GameObject: {fileID: 1238943812}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.0023, y: 0.022, z: 0.2005}
+  m_LocalPosition: {x: 0.3965, y: 0.022, z: -0.1597}
   m_LocalScale: {x: 0.02, y: 0.02, z: 0.02}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1749,7 +1749,7 @@ GameObject:
   - component: {fileID: 1964602098}
   - component: {fileID: 1964602101}
   - component: {fileID: 1964602103}
-  - component: {fileID: 1964602102}
+  - component: {fileID: 1964602104}
   m_Layer: 0
   m_Name: Entry Point
   m_TagString: Untagged
@@ -1805,31 +1805,7 @@ MonoBehaviour:
   picoHandInput: {fileID: 885296194}
   picoCameraRenderTextureSource: {fileID: 707986677}
   qrMarkerRegistry: {fileID: 1964602103}
-  qrRaycastPoseResolver: {fileID: 1964602102}
---- !u!114 &1964602102
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1964602097}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7735a69822de969429802d55414be21e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::QrRaycastPoseResolver
-  raycastMask:
-    serializedVersion: 2
-    m_Bits: 58
-  maxDistance: 20
-  flipHorizontal: 1
-  flipVertical: 1
-  viewportOffset: {x: 0, y: 0}
-  positionSmoothing: 0.25
-  rotationSmoothing: 0.25
-  snapDistance: 0.2
-  surfaceOffset: 0.01
-  debugMarker: {fileID: 1238943815}
+  qrCameraRayPoseResolver: {fileID: 1964602104}
 --- !u!114 &1964602103
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1851,6 +1827,43 @@ MonoBehaviour:
     prefab: {fileID: 8275416528033784763, guid: 4982997e3ecc9684687db44006b5fa2f, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
+--- !u!114 &1964602104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1964602097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d642d71fa14548aa8cb2b0df4b89f76a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QrCameraRayPoseResolver
+  raycastMask:
+    serializedVersion: 2
+    m_Bits: 123
+  maxDistance: 20
+  useCaptureTimeHeadPose: 1
+  mirrorImageX: 1
+  mirrorResultPointsX: 0
+  invertCameraSpaceForward: 1
+  viewportOffset: {x: 0, y: 0}
+  orientUsingQrResultPoints: 1
+  positionSmoothing: 0.35
+  rotationSmoothing: 0.35
+  snapDistance: 0.12
+  surfaceOffset: 0.01
+  verbosePoseDiagnostics: 0
+  poseDiagnosticsInterval: 0.5
+  debugView:
+    isEnabled: 1
+    parentRuntimeRootToHost: 0
+    centerMarker: {fileID: 0}
+    resultPointMarkerTemplate: {fileID: 0}
+    runtimeCenterMarkerScale: 0.03
+    runtimeResultPointMarkerScale: 0.02
+    runtimeCenterMarkerColor: {r: 0.2, g: 0.95, b: 0.35, a: 0.85}
+    runtimeResultPointMarkerColor: {r: 1, g: 0.82, b: 0.18, a: 0.85}
 --- !u!1 &2090591069
 GameObject:
   m_ObjectHideFlags: 0

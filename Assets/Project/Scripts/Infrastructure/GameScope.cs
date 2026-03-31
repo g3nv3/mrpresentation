@@ -9,7 +9,7 @@ namespace Project.Scripts
         [SerializeField] private PicoHandInput picoHandInput;
         [SerializeField] private PicoCameraRenderTextureSource picoCameraRenderTextureSource;
         [SerializeField] private QrMarkerRegistry qrMarkerRegistry;
-        [SerializeField] private QrRaycastPoseResolver qrRaycastPoseResolver;
+        [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -24,7 +24,8 @@ namespace Project.Scripts
                 builder.RegisterComponent(picoCameraRenderTextureSource);
             }
 
-            var hasQrPlacementDependencies = qrMarkerRegistry != null && qrRaycastPoseResolver != null;
+            var hasQrPlacementDependencies =
+                qrMarkerRegistry != null && qrCameraRayPoseResolver != null;
 
             if (qrMarkerRegistry != null)
             {
@@ -32,9 +33,9 @@ namespace Project.Scripts
                     .As<IQrMarkerRegistry>();
             }
 
-            if (qrRaycastPoseResolver != null)
+            if (qrCameraRayPoseResolver != null)
             {
-                builder.RegisterComponent(qrRaycastPoseResolver)
+                builder.RegisterComponent(qrCameraRayPoseResolver)
                     .As<IQrPoseResolver>();
             }
 
