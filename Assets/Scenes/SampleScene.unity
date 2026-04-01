@@ -1824,14 +1824,14 @@ MonoBehaviour:
     prefab: {fileID: 5439064939918472258, guid: 6731ae08c6f49ff449eff5efbe071b21, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
-    qrCodeSizeMeters: 0.1
+    qrCodeSizeMeters: 0.05
     qrModuleCount: 21
     enableMetricPoseRefinement: 1
   - markerId: figure-2
     prefab: {fileID: 8275416528033784763, guid: 4982997e3ecc9684687db44006b5fa2f, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
-    qrCodeSizeMeters: 0.1
+    qrCodeSizeMeters: 0.05
     qrModuleCount: 21
     enableMetricPoseRefinement: 1
 --- !u!114 &1964602104
@@ -1859,8 +1859,9 @@ MonoBehaviour:
   projectionModelMode: 1
   ignoreReportedCameraTranslation: 0
   ignoreReportedCameraRotation: 0
+  flipReportedCameraTranslationZ: 1
   viewportOffset: {x: 0, y: 0}
-  orientUsingQrResultPoints: 1
+  orientUsingQrResultPoints: 0
   positionSmoothing: 0.35
   rotationSmoothing: 0.35
   snapDistance: 0.12

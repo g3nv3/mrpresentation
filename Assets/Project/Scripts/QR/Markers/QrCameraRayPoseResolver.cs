@@ -35,6 +35,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     [SerializeField] private ProjectionModelMode projectionModelMode = ProjectionModelMode.DeriveFromFrameFov;
     [SerializeField] private bool ignoreReportedCameraTranslation;
     [SerializeField] private bool ignoreReportedCameraRotation;
+    [SerializeField] private bool flipReportedCameraTranslationZ = true;
     [SerializeField] private Vector2 viewportOffset;
     [SerializeField] private bool orientUsingQrResultPoints = true;
     [SerializeField, Range(0f, 1f)] private float positionSmoothing = 0.25f;
@@ -472,7 +473,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                $"deviceDelta={headDeltaText}\n" +
                $"camLocalRaw={rawCameraLocalPoseText}\n" +
                $"camLocal={cameraLocalPoseText}\n" +
-               $"camAdjust=t{(ignoreReportedCameraTranslation ? "0" : "1")} r{(ignoreReportedCameraRotation ? "0" : "1")}\n" +
+               $"camAdjust=t{(ignoreReportedCameraTranslation ? "0" : "1")} r{(ignoreReportedCameraRotation ? "0" : "1")} z{(flipReportedCameraTranslationZ ? "-1" : "+1")}\n" +
                $"camWorld={cameraWorldPoseText}\n" +
                $"origin={FormatNullableRayOrigin(ray)}\n" +
                $"dir={FormatNullableRayDirection(ray)}\n" +
@@ -599,6 +600,11 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private Pose AdjustReportedCameraLocalPose(in Pose reportedCameraPose)
     {
         var position = ignoreReportedCameraTranslation ? Vector3.zero : reportedCameraPose.position;
+        if (!ignoreReportedCameraTranslation && flipReportedCameraTranslationZ)
+        {
+            position.z = -position.z;
+        }
+
         var rotation = ignoreReportedCameraRotation ? Quaternion.identity : reportedCameraPose.rotation;
         return new Pose(position, rotation);
     }
