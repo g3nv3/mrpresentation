@@ -10,6 +10,13 @@ using UnityEngine.UI;
 
 public sealed class PicoCameraRenderTextureSource : MonoBehaviour
 {
+    private enum ResolutionSelectionMode
+    {
+        Smallest = 0,
+        Largest = 1,
+        AsReported = 2
+    }
+
     [Header("Output")]
     [SerializeField] private RenderTexture targetTexture;
     [SerializeField] private bool createTargetIfMissing = true;
@@ -19,6 +26,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     [Header("Camera Config")]
     [SerializeField] private XrCameraIdPICO preferredCameraId = XrCameraIdPICO.XR_CAMERA_ID_RGB_LEFT_PICO;
     [SerializeField] private XrCameraImageFpsPICO preferredFps = XrCameraImageFpsPICO.XR_CAMERA_IMAGE_FPS_30_PICO;
+    [SerializeField] private ResolutionSelectionMode resolutionSelection = ResolutionSelectionMode.Smallest;
     [SerializeField] private bool autoStartOnEnable = true;
 
     [Header("QR")]
@@ -301,8 +309,21 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         }
 
         LogVerbose($"Supported resolutions for {cameraId}: {string.Join(", ", resolutions.Select(r => $"{r.width}x{r.height}"))}");
-        resolution = new Vector2Int(resolutions[0].width, resolutions[0].height);
-        LogVerbose($"Selected resolution: {resolution.x}x{resolution.y}.");
+        var orderedResolutions = resolutions
+            .OrderBy(r => (long)r.width * r.height)
+            .ThenBy(r => r.width)
+            .ThenBy(r => r.height)
+            .ToArray();
+
+        var selectedResolution = resolutionSelection switch
+        {
+            ResolutionSelectionMode.Smallest => orderedResolutions[0],
+            ResolutionSelectionMode.Largest => orderedResolutions[orderedResolutions.Length - 1],
+            _ => resolutions[0]
+        };
+
+        resolution = new Vector2Int(selectedResolution.width, selectedResolution.height);
+        LogVerbose($"Selected resolution: {resolution.x}x{resolution.y}. Mode={resolutionSelection}");
         return true;
     }
 

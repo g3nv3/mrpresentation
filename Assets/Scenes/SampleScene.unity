@@ -417,11 +417,12 @@ MonoBehaviour:
   decodedQrTextLabel: {fileID: 1145447855}
   preferredCameraId: 1
   preferredFps: 1
+  resolutionSelection: 0
   autoStartOnEnable: 1
   enableQrDetection: 1
   qrScanIntervalSeconds: 0.08
   qrDetectionHoldSeconds: 1.5
-  clearDetectionOnQrLoss: 0
+  clearDetectionOnQrLoss: 1
   verboseLogging: 1
 --- !u!4 &707986678
 Transform:
@@ -1823,10 +1824,16 @@ MonoBehaviour:
     prefab: {fileID: 5439064939918472258, guid: 6731ae08c6f49ff449eff5efbe071b21, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
+    qrCodeSizeMeters: 0.1
+    qrModuleCount: 21
+    enableMetricPoseRefinement: 1
   - markerId: figure-2
     prefab: {fileID: 8275416528033784763, guid: 4982997e3ecc9684687db44006b5fa2f, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
+    qrCodeSizeMeters: 0.1
+    qrModuleCount: 21
+    enableMetricPoseRefinement: 1
 --- !u!114 &1964602104
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1846,13 +1853,22 @@ MonoBehaviour:
   useCaptureTimeHeadPose: 1
   mirrorImageX: 1
   mirrorResultPointsX: 0
+  lockResultPointMirrorToCenter: 1
   invertCameraSpaceForward: 1
+  cameraExtrinsicsInterpretation: 0
   viewportOffset: {x: 0, y: 0}
   orientUsingQrResultPoints: 1
   positionSmoothing: 0.35
   rotationSmoothing: 0.35
   snapDistance: 0.12
   surfaceOffset: 0.01
+  enableMetricPoseRefinement: 1
+  metricPoseRefinementIterations: 6
+  metricPoseRotationStepRadians: 0.01
+  metricPoseTranslationStepMeters: 0.005
+  metricPoseInitialDamping: 0.001
+  metricPoseMaxTranslationDelta: 0.25
+  metricPoseMaxRotationDeltaDegrees: 35
   verbosePoseDiagnostics: 0
   poseDiagnosticsInterval: 0.5
   debugView:

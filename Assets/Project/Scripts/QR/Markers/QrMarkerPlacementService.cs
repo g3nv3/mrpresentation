@@ -12,8 +12,6 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
     private const string DeletePrompt = "Модель уже создана. Нажмите pinch, чтобы удалить";
     private const string SurfacePrompt = "QR найден, но поверхность для размещения не определена";
     private const bool KeepLastPlacementPoseOnResolveFailure = true;
-    private const float PreviewMarkerScale = 0.08f;
-    private const float PreviewMarkerOffset = 0.05f;
 
     private readonly IQrMarkerPayloadParser payloadParser;
     private readonly IQrMarkerRegistry markerRegistry;
@@ -27,7 +25,6 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
     private string currentMarkerId;
     private Pose currentPlacementPose;
     private bool hasCurrentPlacementPose;
-    private GameObject previewMarker;
 
     [Inject]
     public QrMarkerPlacementService(
@@ -74,14 +71,12 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
             currentMarkerId = payload.MarkerId;
             currentPlacementPose = default;
             hasCurrentPlacementPose = false;
-            SetPreviewVisible(false);
         }
 
         TryUpdateCurrentPlacementPose(definition, detection);
 
         if (IsSpawned(payload.MarkerId))
         {
-            SetPreviewVisible(false);
             statusText = hasCurrentPlacementPose ? BuildStatusText(DeletePrompt) : BuildSurfaceStatusText();
             return true;
         }
@@ -96,7 +91,6 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
         currentPlacementPose = default;
         hasCurrentPlacementPose = false;
         poseResolver?.ClearResolvedPose();
-        SetPreviewVisible(false);
     }
 
     public void Dispose()
@@ -104,12 +98,6 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
         if (handInput != null)
         {
             handInput.PinchStarted -= HandlePinchStarted;
-        }
-
-        if (previewMarker != null)
-        {
-            UnityEngine.Object.Destroy(previewMarker);
-            previewMarker = null;
         }
     }
 
@@ -161,20 +149,18 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
 
             currentPlacementPose = default;
             hasCurrentPlacementPose = false;
-            SetPreviewVisible(false);
             return;
         }
 
         currentPlacementPose = placementPose;
         hasCurrentPlacementPose = true;
-        UpdatePreviewMarker(placementPose);
     }
 
     private bool TryBuildPlacementPose(QrMarkerDefinition definition, in QrDetection detection, out Pose placementPose)
     {
         placementPose = default;
 
-        if (!poseResolver.TryResolvePose(detection, out var markerPose))
+        if (!poseResolver.TryResolvePose(detection, definition, out var markerPose))
         {
             return false;
         }
@@ -194,7 +180,6 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
         }
 
         spawnedByMarkerId[markerId] = new SpawnedMarkerState(instance);
-        SetPreviewVisible(false);
     }
 
     private void DeleteMarker(string markerId)
@@ -210,93 +195,11 @@ public sealed class QrMarkerPlacementService : IQrMarkerPlacementService, IDispo
         }
 
         spawnedByMarkerId.Remove(markerId);
-
-        if (hasCurrentPlacementPose)
-        {
-            UpdatePreviewMarker(currentPlacementPose);
-        }
     }
 
     private bool IsSpawned(string markerId)
     {
         return spawnedByMarkerId.TryGetValue(markerId, out var state) && state.Instance != null;
-    }
-
-    private void UpdatePreviewMarker(in Pose placementPose)
-    {
-        var marker = EnsurePreviewMarker();
-        if (marker == null)
-        {
-            return;
-        }
-
-        var liftedPosition = placementPose.position + placementPose.rotation * Vector3.up * PreviewMarkerOffset;
-        marker.transform.SetPositionAndRotation(liftedPosition, placementPose.rotation);
-        marker.SetActive(true);
-    }
-
-    private void SetPreviewVisible(bool isVisible)
-    {
-        if (previewMarker == null)
-        {
-            return;
-        }
-
-        if (previewMarker.activeSelf != isVisible)
-        {
-            previewMarker.SetActive(isVisible);
-        }
-    }
-
-    private GameObject EnsurePreviewMarker()
-    {
-        if (previewMarker != null)
-        {
-            return previewMarker;
-        }
-
-        previewMarker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        previewMarker.name = "QR Placement Preview";
-        previewMarker.transform.localScale = Vector3.one * PreviewMarkerScale;
-
-        var ignoreRaycastLayer = LayerMask.NameToLayer("Ignore Raycast");
-        if (ignoreRaycastLayer >= 0)
-        {
-            previewMarker.layer = ignoreRaycastLayer;
-        }
-
-        foreach (var collider in previewMarker.GetComponentsInChildren<Collider>(true))
-        {
-            collider.enabled = false;
-        }
-
-        foreach (var renderer in previewMarker.GetComponentsInChildren<Renderer>(true))
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ??
-                         Shader.Find("Unlit/Color") ??
-                         Shader.Find("Standard");
-            if (shader == null)
-            {
-                continue;
-            }
-
-            var material = new Material(shader);
-            var color = new Color(1f, 0.2f, 0.2f, 0.95f);
-            if (material.HasProperty("_BaseColor"))
-            {
-                material.SetColor("_BaseColor", color);
-            }
-
-            if (material.HasProperty("_Color"))
-            {
-                material.SetColor("_Color", color);
-            }
-
-            renderer.material = material;
-        }
-
-        previewMarker.SetActive(false);
-        return previewMarker;
     }
 
     private string BuildSurfaceStatusText()
