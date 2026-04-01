@@ -10,6 +10,7 @@ namespace Project.Scripts
         [SerializeField] private PicoCameraRenderTextureSource picoCameraRenderTextureSource;
         [SerializeField] private QrMarkerRegistry qrMarkerRegistry;
         [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
+        [SerializeField] private bool createManualQrAnchors = true;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -42,17 +43,24 @@ namespace Project.Scripts
             builder.Register<QrMarkerPayloadParser>(Lifetime.Singleton)
                 .As<IQrMarkerPayloadParser>();
 
-            if (hasQrPlacementDependencies && picoHandInput != null)
-            {
-                builder.Register<QrMarkerPlacementService>(Lifetime.Singleton)
-                    .As<IQrMarkerPlacementService>();
+            builder.RegisterInstance(new QrManualAnchorOptions(createManualQrAnchors));
 
-                builder.RegisterEntryPoint<HandDragService>(Lifetime.Singleton);
+            if (hasQrPlacementDependencies)
+            {
+                builder.Register<QrManualAnchorRegistry>(Lifetime.Singleton);
+
+                builder.Register<QrMarkerAutoAnchorService>(Lifetime.Singleton)
+                    .As<IQrMarkerPlacementService>();
             }
             else
             {
                 builder.Register<NullQrMarkerPlacementService>(Lifetime.Singleton)
                     .As<IQrMarkerPlacementService>();
+            }
+
+            if (picoHandInput != null)
+            {
+                builder.RegisterEntryPoint<HandDragService>(Lifetime.Singleton);
             }
 
             builder.Register<PicoQrCodeReader>(Lifetime.Singleton);

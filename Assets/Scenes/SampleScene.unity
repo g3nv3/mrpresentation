@@ -421,7 +421,7 @@ MonoBehaviour:
   autoStartOnEnable: 1
   enableQrDetection: 1
   qrScanIntervalSeconds: 0.05
-  qrDetectionHoldSeconds: 1.5
+  qrDetectionHoldSeconds: 0.5
   clearDetectionOnQrLoss: 1
   verboseLogging: 1
 --- !u!4 &707986678
@@ -1807,6 +1807,7 @@ MonoBehaviour:
   picoCameraRenderTextureSource: {fileID: 707986677}
   qrMarkerRegistry: {fileID: 1964602103}
   qrCameraRayPoseResolver: {fileID: 1964602104}
+  createManualQrAnchors: 1
 --- !u!114 &1964602103
 MonoBehaviour:
   m_ObjectHideFlags: 0
