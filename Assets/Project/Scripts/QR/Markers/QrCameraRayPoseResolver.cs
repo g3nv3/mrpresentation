@@ -3,13 +3,21 @@ using System.Collections.Generic;
 
 using UnityEngine;
 using Unity.XR.PXR;
+using ZXing;
 
 public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 {
     private enum CameraExtrinsicsInterpretation
     {
         CameraPoseRelativeToDevice = 0,
-        InverseOfReportedPose = 1
+        InverseOfReportedPose = 1,
+        TrackingSpacePose = 2
+    }
+
+    private enum ProjectionModelMode
+    {
+        UseSdkIntrinsics = 0,
+        DeriveFromFrameFov = 1
     }
 
     private const float MinAxisMagnitude = 0.0001f;
@@ -24,6 +32,9 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     [SerializeField] private bool invertCameraSpaceForward;
     [SerializeField] private CameraExtrinsicsInterpretation cameraExtrinsicsInterpretation =
         CameraExtrinsicsInterpretation.CameraPoseRelativeToDevice;
+    [SerializeField] private ProjectionModelMode projectionModelMode = ProjectionModelMode.DeriveFromFrameFov;
+    [SerializeField] private bool ignoreReportedCameraTranslation;
+    [SerializeField] private bool ignoreReportedCameraRotation;
     [SerializeField] private Vector2 viewportOffset;
     [SerializeField] private bool orientUsingQrResultPoints = true;
     [SerializeField, Range(0f, 1f)] private float positionSmoothing = 0.25f;
@@ -299,12 +310,25 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 
     private bool TryCreateRayContext(Camera activeCamera, in QrDetection detection, out CameraProjectionData context)
     {
-        var headWorldPose = new Pose(activeCamera.transform.position, activeCamera.transform.rotation);
-        var note = "current head";
+        var trackingOrigin = activeCamera.transform.parent;
+        var trackingOriginWorldPose = trackingOrigin != null
+            ? new Pose(trackingOrigin.position, trackingOrigin.rotation)
+            : Pose.identity;
+
+        if (!TryGetCurrentDeviceWorldPose(
+                trackingOriginWorldPose,
+                out var currentHeadWorldPose,
+                out var currentDeviceNote))
+        {
+            currentHeadWorldPose = new Pose(activeCamera.transform.position, activeCamera.transform.rotation);
+            currentDeviceNote = "current-device(fallback-camera)";
+        }
+        var headWorldPose = currentHeadWorldPose;
+        var note = currentDeviceNote;
         var useCaptureHeadPose = false;
 
         if (useCaptureTimeHeadPose &&
-            TryGetHeadWorldPoseAtCaptureTime(activeCamera, detection.CaptureTime, out var captureHeadPose, out var captureNote))
+            TryGetHeadWorldPoseAtCaptureTime(trackingOriginWorldPose, detection.CaptureTime, out var captureHeadPose, out var captureNote))
         {
             headWorldPose = captureHeadPose;
             note = captureNote;
@@ -322,14 +346,20 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var cameraWorldPose = TransformPose(
+        var adjustedCameraLocalPose = AdjustReportedCameraLocalPose(projectionData.CameraLocalPose);
+        var cameraWorldPose = ResolveCameraWorldPose(
             headWorldPose,
-            ResolveCameraLocalPose(projectionData.CameraLocalPose));
+            trackingOriginWorldPose,
+            adjustedCameraLocalPose);
         context = new CameraProjectionData(
             projectionData.Intrinsics,
             projectionData.CameraLocalPose,
+            adjustedCameraLocalPose,
+            headWorldPose,
+            currentHeadWorldPose,
+            trackingOriginWorldPose,
             cameraWorldPose,
-            useCaptureHeadPose ? "intrinsics-capture-head" : "intrinsics-current-head",
+            useCaptureHeadPose ? "intrinsics-capture-device" : "intrinsics-current-device",
             note);
         return true;
     }
@@ -350,11 +380,14 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
+        if (!TryBuildProjectionModel(context.Intrinsics, frameWidth, frameHeight, out var projectionModel))
+        {
+            return false;
+        }
+
         var localDirection = BuildCameraSpaceDirection(
-            context.Intrinsics,
+            projectionModel,
             adjustedImagePoint,
-            frameWidth,
-            frameHeight,
             invertCameraSpaceForward);
         if (localDirection.sqrMagnitude < MinAxisMagnitude)
         {
@@ -387,6 +420,39 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         var note = context.HasValue && !string.IsNullOrWhiteSpace(context.Value.Note)
             ? context.Value.Note
             : UnavailableValue;
+        var intrinsicsText = context.HasValue
+            ? FormatIntrinsics(context.Value.Intrinsics)
+            : UnavailableValue;
+        var projectionText = context.HasValue &&
+                             TryBuildProjectionModel(
+                                 context.Value.Intrinsics,
+                                 detection.FrameWidth,
+                                 detection.FrameHeight,
+                                 out var projectionModel)
+            ? FormatProjectionModel(projectionModel)
+            : UnavailableValue;
+        var headPoseText = context.HasValue
+            ? FormatPose(context.Value.HeadWorldPose)
+            : UnavailableValue;
+        var trackingOriginText = context.HasValue
+            ? FormatPose(context.Value.TrackingOriginWorldPose)
+            : UnavailableValue;
+        var currentHeadPoseText = context.HasValue
+            ? FormatPose(context.Value.CurrentHeadWorldPose)
+            : UnavailableValue;
+        var headDeltaText = context.HasValue
+            ? FormatPoseDelta(context.Value.CurrentHeadWorldPose, context.Value.HeadWorldPose)
+            : UnavailableValue;
+        var rawCameraLocalPoseText = context.HasValue
+            ? FormatPose(context.Value.RawCameraLocalPose)
+            : UnavailableValue;
+        var cameraLocalPoseText = context.HasValue
+            ? FormatPose(context.Value.CameraLocalPose)
+            : UnavailableValue;
+        var cameraWorldPoseText = context.HasValue
+            ? FormatPose(context.Value.CameraWorldPose)
+            : UnavailableValue;
+        var finderText = BuildFinderDebugText(detection);
 
         return outcome + "\n" +
                $"mode={mode}\n" +
@@ -394,8 +460,20 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                $"centerMirrorX={(mirrorImageX ? "1" : "0")} pointsMirrorX={(GetResultPointsMirrorX() ? "1" : "0")}\n" +
                $"forwardZ={(invertCameraSpaceForward ? "-1" : "+1")}\n" +
                $"extrinsics={cameraExtrinsicsInterpretation}\n" +
+               $"projection={projectionModelMode}\n" +
+               $"sdk={intrinsicsText}\n" +
+               $"proj={projectionText}\n" +
                $"qrBasis={(orientUsingQrResultPoints ? "finder" : "head")}\n" +
                $"raw={FormatVector2(detection.ImageCenter)} adjusted={FormatNullableVector2(adjustedImagePoint)}\n" +
+               $"finder={finderText}\n" +
+               $"tracking={trackingOriginText}\n" +
+               $"deviceUsed={headPoseText}\n" +
+               $"deviceCurrent={currentHeadPoseText}\n" +
+               $"deviceDelta={headDeltaText}\n" +
+               $"camLocalRaw={rawCameraLocalPoseText}\n" +
+               $"camLocal={cameraLocalPoseText}\n" +
+               $"camAdjust=t{(ignoreReportedCameraTranslation ? "0" : "1")} r{(ignoreReportedCameraRotation ? "0" : "1")}\n" +
+               $"camWorld={cameraWorldPoseText}\n" +
                $"origin={FormatNullableRayOrigin(ray)}\n" +
                $"dir={FormatNullableRayDirection(ray)}\n" +
                $"hit={FormatNullableHitPoint(hit)} normal={FormatNullableHitNormal(hit)}\n" +
@@ -426,36 +504,59 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     }
 
     private static Vector3 BuildCameraSpaceDirection(
-        XrCameraIntrinsics intrinsics,
+        in CameraProjectionModel projectionModel,
         Vector2 imagePoint,
-        int frameWidth,
-        int frameHeight,
         bool invertForwardZ)
     {
-        imagePoint = ScaleImagePointToIntrinsics(intrinsics, imagePoint, frameWidth, frameHeight);
-        var fx = Mathf.Max(intrinsics.focalLength.X, MinAxisMagnitude);
-        var fy = Mathf.Max(intrinsics.focalLength.Y, MinAxisMagnitude);
-        var x = (imagePoint.x - intrinsics.principalPoint.X) / fx;
-        var y = (intrinsics.principalPoint.Y - imagePoint.y) / fy;
+        var fx = Mathf.Max(projectionModel.Fx, MinAxisMagnitude);
+        var fy = Mathf.Max(projectionModel.Fy, MinAxisMagnitude);
+        var x = (imagePoint.x - projectionModel.Cx) / fx;
+        var y = (projectionModel.Cy - imagePoint.y) / fy;
         return new Vector3(x, y, invertForwardZ ? -1f : 1f);
     }
 
-    private static Vector2 ScaleImagePointToIntrinsics(
+    private bool TryBuildProjectionModel(
         XrCameraIntrinsics intrinsics,
-        Vector2 imagePoint,
         int frameWidth,
-        int frameHeight)
+        int frameHeight,
+        out CameraProjectionModel projectionModel)
     {
+        projectionModel = default;
         if (frameWidth <= 0 || frameHeight <= 0)
         {
-            return imagePoint;
+            return false;
         }
 
-        var intrinsicsWidth = Mathf.Max(intrinsics.principalPoint.X * 2f, MinAxisMagnitude);
-        var intrinsicsHeight = Mathf.Max(intrinsics.principalPoint.Y * 2f, MinAxisMagnitude);
-        return new Vector2(
-            imagePoint.x * intrinsicsWidth / frameWidth,
-            imagePoint.y * intrinsicsHeight / frameHeight);
+        if (projectionModelMode == ProjectionModelMode.DeriveFromFrameFov)
+        {
+            var horizontalFovRadians = intrinsics.fov.X * Mathf.Deg2Rad;
+            var verticalFovRadians = intrinsics.fov.Y * Mathf.Deg2Rad;
+            var halfHorizontalTangent = Mathf.Tan(horizontalFovRadians * 0.5f);
+            var halfVerticalTangent = Mathf.Tan(verticalFovRadians * 0.5f);
+            if (horizontalFovRadians > MinAxisMagnitude &&
+                verticalFovRadians > MinAxisMagnitude &&
+                !float.IsNaN(halfHorizontalTangent) &&
+                !float.IsInfinity(halfHorizontalTangent) &&
+                !float.IsNaN(halfVerticalTangent) &&
+                !float.IsInfinity(halfVerticalTangent) &&
+                Mathf.Abs(halfHorizontalTangent) > MinAxisMagnitude &&
+                Mathf.Abs(halfVerticalTangent) > MinAxisMagnitude)
+            {
+                projectionModel = new CameraProjectionModel(
+                    frameWidth * 0.5f / halfHorizontalTangent,
+                    frameHeight * 0.5f / halfVerticalTangent,
+                    frameWidth * 0.5f,
+                    frameHeight * 0.5f);
+                return true;
+            }
+        }
+
+        projectionModel = new CameraProjectionModel(
+            intrinsics.focalLength.X,
+            intrinsics.focalLength.Y,
+            intrinsics.principalPoint.X,
+            intrinsics.principalPoint.Y);
+        return projectionModel.IsValid;
     }
 
     private bool TryGetProjectionData(XrCameraIdPICO cameraId, out CameraProjectionData projectionData)
@@ -495,8 +596,35 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         return true;
     }
 
+    private Pose AdjustReportedCameraLocalPose(in Pose reportedCameraPose)
+    {
+        var position = ignoreReportedCameraTranslation ? Vector3.zero : reportedCameraPose.position;
+        var rotation = ignoreReportedCameraRotation ? Quaternion.identity : reportedCameraPose.rotation;
+        return new Pose(position, rotation);
+    }
+
+    private bool TryGetCurrentDeviceWorldPose(
+        in Pose trackingOriginWorldPose,
+        out Pose deviceWorldPose,
+        out string note)
+    {
+        deviceWorldPose = default;
+        note = null;
+
+        var sensorFrameIndex = 0;
+        var sensorState = default(PxrSensorState2);
+        if (PXR_System.GetPredictedMainSensorStateNew(ref sensorState, ref sensorFrameIndex) != 0)
+        {
+            return false;
+        }
+
+        deviceWorldPose = ConvertPluginPose(sensorState.pose).GetTransformedBy(trackingOriginWorldPose);
+        note = $"current-device frame={sensorFrameIndex}";
+        return true;
+    }
+
     private bool TryGetHeadWorldPoseAtCaptureTime(
-        Camera activeCamera,
+        in Pose trackingOriginWorldPose,
         long captureTime,
         out Pose headWorldPose,
         out string note)
@@ -517,13 +645,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var trackingOrigin = activeCamera.transform.parent;
-        var trackingOriginWorldPose = trackingOrigin != null
-            ? new Pose(trackingOrigin.position, trackingOrigin.rotation)
-            : Pose.identity;
-
         headWorldPose = ConvertPluginPose(sensorState.pose).GetTransformedBy(trackingOriginWorldPose);
-        note = $"capture={predictTimeMs:F1}ms frame={sensorFrameIndex}";
+        note = $"capture-device={predictTimeMs:F1}ms frame={sensorFrameIndex}";
         return true;
     }
 
@@ -575,9 +698,20 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var localFinderPoints = BuildFinderLocalPoints(definition);
+        if (!TryBuildProjectionModel(
+                context.Intrinsics,
+                detection.FrameWidth,
+                detection.FrameHeight,
+                out var projectionModel))
+        {
+            metricPoseStatus = "metric=skipped(no-projection)";
+            return false;
+        }
+
+        var localFinderPoints = BuildFinderLocalPoints(definition, GetResultPointsMirrorX());
         if (!TryOptimizeMetricPose(
-                context,
+                projectionModel,
+                context.CameraWorldPose,
                 basePose,
                 localFinderPoints,
                 observedFinderPoints,
@@ -599,7 +733,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         }
 
         metricPoseStatus =
-            $"metric=refined err={reprojectionError:F2}px dt={translationDelta:F3} dr={rotationDelta:F1}";
+            $"metric=refined err={reprojectionError:F2}px dt={translationDelta:F3} dr={rotationDelta:F1} {FormatMetricDefinition(definition)}";
         return true;
     }
 
@@ -652,29 +786,67 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        adjustedFinderPoint = ScaleImagePointToIntrinsics(
-            intrinsics,
-            adjustedImagePoint,
-            frameWidth,
-            frameHeight);
+        adjustedFinderPoint = adjustedImagePoint;
         return IsFinite(adjustedFinderPoint);
     }
 
-    private static Vector3[] BuildFinderLocalPoints(QrMarkerDefinition definition)
+    private string BuildFinderDebugText(in QrDetection detection)
+    {
+        if (!TryGetOrderedFinderPoints(
+                detection.ImageResultPoints,
+                out var bottomLeftImage,
+                out var topLeftImage,
+                out var topRightImage))
+        {
+            return "none";
+        }
+
+        var bottomLeftAdjusted = TryAdjustImagePoint(
+            bottomLeftImage,
+            detection.FrameWidth,
+            detection.FrameHeight,
+            GetResultPointsMirrorX(),
+            out var adjustedBottomLeft)
+            ? FormatVector2(adjustedBottomLeft)
+            : UnavailableValue;
+        var topLeftAdjusted = TryAdjustImagePoint(
+            topLeftImage,
+            detection.FrameWidth,
+            detection.FrameHeight,
+            GetResultPointsMirrorX(),
+            out var adjustedTopLeft)
+            ? FormatVector2(adjustedTopLeft)
+            : UnavailableValue;
+        var topRightAdjusted = TryAdjustImagePoint(
+            topRightImage,
+            detection.FrameWidth,
+            detection.FrameHeight,
+            GetResultPointsMirrorX(),
+            out var adjustedTopRight)
+            ? FormatVector2(adjustedTopRight)
+            : UnavailableValue;
+
+        return
+            $"bl={FormatVector2(bottomLeftImage)}>{bottomLeftAdjusted} tl={FormatVector2(topLeftImage)}>{topLeftAdjusted} tr={FormatVector2(topRightImage)}>{topRightAdjusted}";
+    }
+
+    private static Vector3[] BuildFinderLocalPoints(QrMarkerDefinition definition, bool mirrorHorizontally)
     {
         var moduleCount = Mathf.Max(21, definition.QrModuleCount);
         var finderCenterSpacing = definition.QrCodeSizeMeters * (moduleCount - 7f) / moduleCount;
         var halfSpacing = finderCenterSpacing * 0.5f;
+        var horizontalSign = mirrorHorizontally ? -1f : 1f;
         return new[]
         {
-            new Vector3(-halfSpacing, 0f, -halfSpacing),
-            new Vector3(-halfSpacing, 0f, halfSpacing),
-            new Vector3(halfSpacing, 0f, halfSpacing)
+            new Vector3(-halfSpacing * horizontalSign, 0f, -halfSpacing),
+            new Vector3(-halfSpacing * horizontalSign, 0f, halfSpacing),
+            new Vector3(halfSpacing * horizontalSign, 0f, halfSpacing)
         };
     }
 
     private bool TryOptimizeMetricPose(
-        CameraProjectionData context,
+        in CameraProjectionModel projectionModel,
+        in Pose cameraWorldPose,
         in Pose basePose,
         Vector3[] localFinderPoints,
         Vector2[] observedFinderPoints,
@@ -684,10 +856,10 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         refinedPose = default;
         reprojectionErrorPixels = 0f;
 
-        var cameraFromWorld = InvertPose(context.CameraWorldPose);
+        var cameraFromWorld = InvertPose(cameraWorldPose);
         var markerInCameraPose = TransformPose(cameraFromWorld, basePose);
         if (!TryComputeReprojectionError(
-                context.Intrinsics,
+                projectionModel,
                 markerInCameraPose,
                 localFinderPoints,
                 observedFinderPoints,
@@ -701,7 +873,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         for (var iteration = 0; iteration < Mathf.Max(1, metricPoseRefinementIterations); iteration++)
         {
             if (!TryBuildNormalEquations(
-                    context.Intrinsics,
+                    projectionModel,
                     markerInCameraPose,
                     localFinderPoints,
                     observedFinderPoints,
@@ -720,7 +892,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 
             var candidatePose = ApplyPoseDelta(markerInCameraPose, delta);
             if (!TryComputeReprojectionError(
-                    context.Intrinsics,
+                    projectionModel,
                     candidatePose,
                     localFinderPoints,
                     observedFinderPoints,
@@ -749,13 +921,13 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             }
         }
 
-        refinedPose = TransformPose(context.CameraWorldPose, markerInCameraPose);
+        refinedPose = TransformPose(cameraWorldPose, markerInCameraPose);
         reprojectionErrorPixels = Mathf.Sqrt(currentCost / Mathf.Max(1, observedFinderPoints.Length * 2));
         return true;
     }
 
     private bool TryBuildNormalEquations(
-        XrCameraIntrinsics intrinsics,
+        in CameraProjectionModel projectionModel,
         in Pose pose,
         Vector3[] localFinderPoints,
         Vector2[] observedFinderPoints,
@@ -777,7 +949,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             var perturbedPose = ApplyPoseDelta(pose, CreateUnitDelta(parameterIndex, step));
 
             if (!TryComputeReprojectionError(
-                    intrinsics,
+                    projectionModel,
                     perturbedPose,
                     localFinderPoints,
                     observedFinderPoints,
@@ -834,7 +1006,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     }
 
     private bool TryComputeReprojectionError(
-        XrCameraIntrinsics intrinsics,
+        in CameraProjectionModel projectionModel,
         in Pose pose,
         Vector3[] localFinderPoints,
         Vector2[] observedFinderPoints,
@@ -847,7 +1019,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         for (var i = 0; i < localFinderPoints.Length; i++)
         {
             var cameraPoint = pose.position + pose.rotation * localFinderPoints[i];
-            if (!TryProjectCameraPoint(intrinsics, cameraPoint, out var projectedPoint))
+            if (!TryProjectCameraPoint(projectionModel, cameraPoint, out var projectedPoint))
             {
                 residuals = null;
                 cost = float.PositiveInfinity;
@@ -866,7 +1038,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     }
 
     private bool TryProjectCameraPoint(
-        XrCameraIntrinsics intrinsics,
+        in CameraProjectionModel projectionModel,
         Vector3 cameraPoint,
         out Vector2 projectedPoint)
     {
@@ -878,11 +1050,11 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var fx = Mathf.Max(intrinsics.focalLength.X, MinAxisMagnitude);
-        var fy = Mathf.Max(intrinsics.focalLength.Y, MinAxisMagnitude);
+        var fx = Mathf.Max(projectionModel.Fx, MinAxisMagnitude);
+        var fy = Mathf.Max(projectionModel.Fy, MinAxisMagnitude);
         projectedPoint = new Vector2(
-            (fx * cameraPoint.x / depth) + intrinsics.principalPoint.X,
-            intrinsics.principalPoint.Y - (fy * cameraPoint.y / depth));
+            (fx * cameraPoint.x / depth) + projectionModel.Cx,
+            projectionModel.Cy - (fy * cameraPoint.y / depth));
         return IsFinite(projectedPoint);
     }
 
@@ -894,7 +1066,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return;
         }
 
-        var localFinderPoints = BuildFinderLocalPoints(definition);
+        var localFinderPoints = BuildFinderLocalPoints(definition, GetResultPointsMirrorX());
         for (var i = 0; i < localFinderPoints.Length; i++)
         {
             debugResultPointPositions.Add(markerPose.position + markerPose.rotation * localFinderPoints[i]);
@@ -1073,11 +1245,19 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             parentPose.rotation * localPose.rotation);
     }
 
-    private Pose ResolveCameraLocalPose(in Pose reportedCameraLocalPose)
+    private Pose ResolveCameraWorldPose(
+        in Pose headWorldPose,
+        in Pose trackingOriginWorldPose,
+        in Pose reportedCameraPose)
     {
-        return cameraExtrinsicsInterpretation == CameraExtrinsicsInterpretation.InverseOfReportedPose
-            ? InvertPose(reportedCameraLocalPose)
-            : reportedCameraLocalPose;
+        return cameraExtrinsicsInterpretation switch
+        {
+            CameraExtrinsicsInterpretation.InverseOfReportedPose =>
+                TransformPose(headWorldPose, InvertPose(reportedCameraPose)),
+            CameraExtrinsicsInterpretation.TrackingSpacePose =>
+                TransformPose(trackingOriginWorldPose, reportedCameraPose),
+            _ => TransformPose(headWorldPose, reportedCameraPose)
+        };
     }
 
     private bool GetResultPointsMirrorX()
@@ -1104,6 +1284,41 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private static string FormatVector3(Vector3 value)
     {
         return $"({value.x:F3},{value.y:F3},{value.z:F3})";
+    }
+
+    private static string FormatPose(in Pose pose)
+    {
+        return $"{FormatVector3(pose.position)}|{FormatVector3(pose.rotation.eulerAngles)}";
+    }
+
+    private static string FormatPoseDelta(in Pose fromPose, in Pose toPose)
+    {
+        var positionDelta = toPose.position - fromPose.position;
+        var rotationDelta = Quaternion.Inverse(fromPose.rotation) * toPose.rotation;
+        return $"{FormatVector3(positionDelta)}|{FormatVector3(rotationDelta.eulerAngles)}";
+    }
+
+    private static string FormatIntrinsics(XrCameraIntrinsics intrinsics)
+    {
+        return
+            $"fxfy=({intrinsics.focalLength.X:F2},{intrinsics.focalLength.Y:F2}) cxcy=({intrinsics.principalPoint.X:F2},{intrinsics.principalPoint.Y:F2}) fov=({intrinsics.fov.X:F2},{intrinsics.fov.Y:F2})";
+    }
+
+    private static string FormatProjectionModel(in CameraProjectionModel projectionModel)
+    {
+        return
+            $"fxfy=({projectionModel.Fx:F2},{projectionModel.Fy:F2}) cxcy=({projectionModel.Cx:F2},{projectionModel.Cy:F2})";
+    }
+
+    private static string FormatMetricDefinition(QrMarkerDefinition definition)
+    {
+        if (definition == null)
+        {
+            return string.Empty;
+        }
+
+        return
+            $"size={definition.QrCodeSizeMeters:F3}m modules={Mathf.Max(21, definition.QrModuleCount)}";
     }
 
     private static string FormatNullableVector3(Vector3? value)
@@ -1217,7 +1432,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var validPoints = new Vector2[3];
+        var validPoints = new ResultPoint[3];
         var validCount = 0;
         for (var i = 0; i < imageResultPoints.Length && validCount < validPoints.Length; i++)
         {
@@ -1226,7 +1441,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                 continue;
             }
 
-            validPoints[validCount++] = imageResultPoints[i];
+            validPoints[validCount++] = new ResultPoint(imageResultPoints[i].x, imageResultPoints[i].y);
         }
 
         if (validCount < 3)
@@ -1234,44 +1449,11 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return false;
         }
 
-        var zeroOne = (validPoints[0] - validPoints[1]).sqrMagnitude;
-        var oneTwo = (validPoints[1] - validPoints[2]).sqrMagnitude;
-        var zeroTwo = (validPoints[0] - validPoints[2]).sqrMagnitude;
-
-        if (oneTwo >= zeroOne && oneTwo >= zeroTwo)
-        {
-            topLeft = validPoints[0];
-            bottomLeft = validPoints[1];
-            topRight = validPoints[2];
-        }
-        else if (zeroTwo >= oneTwo && zeroTwo >= zeroOne)
-        {
-            topLeft = validPoints[1];
-            bottomLeft = validPoints[0];
-            topRight = validPoints[2];
-        }
-        else
-        {
-            topLeft = validPoints[2];
-            bottomLeft = validPoints[0];
-            topRight = validPoints[1];
-        }
-
-        if (CrossProductZ(bottomLeft, topLeft, topRight) < 0f)
-        {
-            var temp = bottomLeft;
-            bottomLeft = topRight;
-            topRight = temp;
-        }
-
+        ResultPoint.orderBestPatterns(validPoints);
+        bottomLeft = new Vector2(validPoints[0].X, validPoints[0].Y);
+        topLeft = new Vector2(validPoints[1].X, validPoints[1].Y);
+        topRight = new Vector2(validPoints[2].X, validPoints[2].Y);
         return true;
-    }
-
-    private static float CrossProductZ(Vector2 pointA, Vector2 pointB, Vector2 pointC)
-    {
-        var bX = pointB.x;
-        var bY = pointB.y;
-        return ((pointC.x - bX) * (pointA.y - bY)) - ((pointC.y - bY) * (pointA.x - bX));
     }
 
     private static int GetPointCount(Vector2[] points)
@@ -1296,28 +1478,64 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private readonly struct CameraProjectionData
     {
         public readonly XrCameraIntrinsics Intrinsics;
+        public readonly Pose RawCameraLocalPose;
         public readonly Pose CameraLocalPose;
+        public readonly Pose HeadWorldPose;
+        public readonly Pose CurrentHeadWorldPose;
+        public readonly Pose TrackingOriginWorldPose;
         public readonly Pose CameraWorldPose;
         public readonly string Mode;
         public readonly string Note;
 
         public CameraProjectionData(XrCameraIntrinsics intrinsics, in Pose cameraLocalPose)
-            : this(intrinsics, cameraLocalPose, default, null, null)
+            : this(intrinsics, cameraLocalPose, cameraLocalPose, default, default, default, default, null, null)
         {
         }
 
         public CameraProjectionData(
             XrCameraIntrinsics intrinsics,
+            in Pose rawCameraLocalPose,
             in Pose cameraLocalPose,
+            in Pose headWorldPose,
+            in Pose currentHeadWorldPose,
+            in Pose trackingOriginWorldPose,
             in Pose cameraWorldPose,
             string mode,
             string note)
         {
             Intrinsics = intrinsics;
+            RawCameraLocalPose = rawCameraLocalPose;
             CameraLocalPose = cameraLocalPose;
+            HeadWorldPose = headWorldPose;
+            CurrentHeadWorldPose = currentHeadWorldPose;
+            TrackingOriginWorldPose = trackingOriginWorldPose;
             CameraWorldPose = cameraWorldPose;
             Mode = mode;
             Note = note;
+        }
+    }
+
+    private readonly struct CameraProjectionModel
+    {
+        public readonly float Fx;
+        public readonly float Fy;
+        public readonly float Cx;
+        public readonly float Cy;
+
+        public bool IsValid =>
+            Fx > MinAxisMagnitude &&
+            Fy > MinAxisMagnitude &&
+            !float.IsNaN(Cx) &&
+            !float.IsInfinity(Cx) &&
+            !float.IsNaN(Cy) &&
+            !float.IsInfinity(Cy);
+
+        public CameraProjectionModel(float fx, float fy, float cx, float cy)
+        {
+            Fx = fx;
+            Fy = fy;
+            Cx = cx;
+            Cy = cy;
         }
     }
 }
