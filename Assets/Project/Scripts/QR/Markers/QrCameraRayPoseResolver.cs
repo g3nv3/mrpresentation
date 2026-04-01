@@ -40,6 +40,9 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     [SerializeField] private bool orientUsingQrResultPoints = true;
     [SerializeField, Range(0f, 1f)] private float positionSmoothing = 0.25f;
     [SerializeField, Range(0f, 1f)] private float rotationSmoothing = 0.25f;
+    [SerializeField] private bool adaptSmoothingToDeviceMotion = true;
+    [SerializeField, Min(0.001f)] private float deviceMotionLinearThresholdMetersPerSecond = 0.04f;
+    [SerializeField, Min(0.1f)] private float deviceMotionAngularThresholdDegreesPerSecond = 20f;
     [SerializeField] private float snapDistance = 0.2f;
     [SerializeField] private float surfaceOffset = 0.01f;
     [SerializeField] private bool enableMetricPoseRefinement = true;
@@ -49,6 +52,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     [SerializeField, Min(0.000001f)] private float metricPoseInitialDamping = 0.001f;
     [SerializeField, Min(0f)] private float metricPoseMaxTranslationDelta = 0.25f;
     [SerializeField, Range(0f, 180f)] private float metricPoseMaxRotationDeltaDegrees = 35f;
+    [SerializeField, Min(0f)] private float metricPoseMaxReprojectionErrorPixels = 8f;
     [SerializeField] private bool verbosePoseDiagnostics;
     [SerializeField, Min(0.1f)] private float poseDiagnosticsInterval = 0.5f;
     [SerializeField] private QrPoseResolverDebugView debugView = new QrPoseResolverDebugView();
@@ -64,6 +68,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private Vector3 filteredPosition;
     private Quaternion filteredRotation = Quaternion.identity;
     private bool hasFilteredPose;
+    private float lastPositionBlend = 1f;
+    private float lastRotationBlend = 1f;
 
     public string LastDebugStatus => lastDebugStatus;
     public bool HasLastRay => hasLastRay;
@@ -236,7 +242,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             PopulateDebugPointsFromPose(definition, resolvedPose);
         }
 
-        resolvedPose = ApplyPoseFilter(resolvedPose);
+        resolvedPose = ApplyPoseFilter(context, resolvedPose);
 
         pose = resolvedPose;
 
@@ -319,9 +325,13 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         if (!TryGetCurrentDeviceWorldPose(
                 trackingOriginWorldPose,
                 out var currentHeadWorldPose,
+                out var currentDeviceLinearSpeedMetersPerSecond,
+                out var currentDeviceAngularSpeedDegreesPerSecond,
                 out var currentDeviceNote))
         {
             currentHeadWorldPose = new Pose(activeCamera.transform.position, activeCamera.transform.rotation);
+            currentDeviceLinearSpeedMetersPerSecond = 0f;
+            currentDeviceAngularSpeedDegreesPerSecond = 0f;
             currentDeviceNote = "current-device(fallback-camera)";
         }
         var headWorldPose = currentHeadWorldPose;
@@ -358,6 +368,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             adjustedCameraLocalPose,
             headWorldPose,
             currentHeadWorldPose,
+            currentDeviceLinearSpeedMetersPerSecond,
+            currentDeviceAngularSpeedDegreesPerSecond,
             trackingOriginWorldPose,
             cameraWorldPose,
             useCaptureHeadPose ? "intrinsics-capture-device" : "intrinsics-current-device",
@@ -471,6 +483,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                $"deviceUsed={headPoseText}\n" +
                $"deviceCurrent={currentHeadPoseText}\n" +
                $"deviceDelta={headDeltaText}\n" +
+               $"motion=lin{(context.HasValue ? context.Value.CurrentDeviceLinearSpeedMetersPerSecond : 0f):F3}/ang{(context.HasValue ? context.Value.CurrentDeviceAngularSpeedDegreesPerSecond : 0f):F1} filter=pos{lastPositionBlend:F2}/rot{lastRotationBlend:F2}\n" +
                $"camLocalRaw={rawCameraLocalPoseText}\n" +
                $"camLocal={cameraLocalPoseText}\n" +
                $"camAdjust=t{(ignoreReportedCameraTranslation ? "0" : "1")} r{(ignoreReportedCameraRotation ? "0" : "1")} z{(flipReportedCameraTranslationZ ? "-1" : "+1")}\n" +
@@ -612,9 +625,13 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private bool TryGetCurrentDeviceWorldPose(
         in Pose trackingOriginWorldPose,
         out Pose deviceWorldPose,
+        out float linearSpeedMetersPerSecond,
+        out float angularSpeedDegreesPerSecond,
         out string note)
     {
         deviceWorldPose = default;
+        linearSpeedMetersPerSecond = 0f;
+        angularSpeedDegreesPerSecond = 0f;
         note = null;
 
         var sensorFrameIndex = 0;
@@ -625,6 +642,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         }
 
         deviceWorldPose = ConvertPluginPose(sensorState.pose).GetTransformedBy(trackingOriginWorldPose);
+        linearSpeedMetersPerSecond = Magnitude(sensorState.linearVelocity);
+        angularSpeedDegreesPerSecond = Magnitude(sensorState.angularVelocity) * Mathf.Rad2Deg;
         note = $"current-device frame={sensorFrameIndex}";
         return true;
     }
@@ -730,6 +749,13 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 
         var translationDelta = Vector3.Distance(basePose.position, refinedPose.position);
         var rotationDelta = Quaternion.Angle(basePose.rotation, refinedPose.rotation);
+        if (reprojectionError > metricPoseMaxReprojectionErrorPixels)
+        {
+            metricPoseStatus =
+                $"metric=skipped(reproj err={reprojectionError:F2}px max={metricPoseMaxReprojectionErrorPixels:F1})";
+            return false;
+        }
+
         if (translationDelta > metricPoseMaxTranslationDelta ||
             rotationDelta > metricPoseMaxRotationDeltaDegrees)
         {
@@ -1357,8 +1383,19 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         return $"{Mathf.Max(0, width)}x{Mathf.Max(0, height)}";
     }
 
-    private Pose ApplyPoseFilter(Pose resolvedPose)
+    private Pose ApplyPoseFilter(CameraProjectionData context, Pose resolvedPose)
     {
+        var positionBlend = GetAdaptiveSmoothingBlend(
+            positionSmoothing,
+            context.CurrentDeviceLinearSpeedMetersPerSecond,
+            context.CurrentDeviceAngularSpeedDegreesPerSecond);
+        var rotationBlend = GetAdaptiveSmoothingBlend(
+            rotationSmoothing,
+            context.CurrentDeviceLinearSpeedMetersPerSecond,
+            context.CurrentDeviceAngularSpeedDegreesPerSecond);
+        lastPositionBlend = positionBlend;
+        lastRotationBlend = rotationBlend;
+
         if (!hasFilteredPose ||
             (filteredPosition - resolvedPose.position).sqrMagnitude > snapDistance * snapDistance)
         {
@@ -1368,9 +1405,27 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             return resolvedPose;
         }
 
-        filteredPosition = Vector3.Lerp(filteredPosition, resolvedPose.position, positionSmoothing);
-        filteredRotation = Quaternion.Slerp(filteredRotation, resolvedPose.rotation, rotationSmoothing);
+        filteredPosition = Vector3.Lerp(filteredPosition, resolvedPose.position, positionBlend);
+        filteredRotation = Quaternion.Slerp(filteredRotation, resolvedPose.rotation, rotationBlend);
         return new Pose(filteredPosition, filteredRotation);
+    }
+
+    private float GetAdaptiveSmoothingBlend(
+        float baseBlend,
+        float currentLinearSpeedMetersPerSecond,
+        float currentAngularSpeedDegreesPerSecond)
+    {
+        if (!adaptSmoothingToDeviceMotion)
+        {
+            return baseBlend;
+        }
+
+        var linearFactor = currentLinearSpeedMetersPerSecond /
+                           Mathf.Max(deviceMotionLinearThresholdMetersPerSecond, 0.001f);
+        var angularFactor = currentAngularSpeedDegreesPerSecond /
+                            Mathf.Max(deviceMotionAngularThresholdDegreesPerSecond, 0.1f);
+        var motionFactor = Mathf.Clamp01(Mathf.Max(linearFactor, angularFactor));
+        return Mathf.Lerp(baseBlend, 1f, motionFactor);
     }
 
     private bool TryGetOrderedFinderSurfaceHits(
@@ -1467,6 +1522,14 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         return points?.Length ?? 0;
     }
 
+    private static float Magnitude(PxrVector3f vector)
+    {
+        return Mathf.Sqrt(
+            (vector.x * vector.x) +
+            (vector.y * vector.y) +
+            (vector.z * vector.z));
+    }
+
     private static bool IsFinite(Vector2 value)
     {
         return !float.IsNaN(value.x) &&
@@ -1488,13 +1551,15 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         public readonly Pose CameraLocalPose;
         public readonly Pose HeadWorldPose;
         public readonly Pose CurrentHeadWorldPose;
+        public readonly float CurrentDeviceLinearSpeedMetersPerSecond;
+        public readonly float CurrentDeviceAngularSpeedDegreesPerSecond;
         public readonly Pose TrackingOriginWorldPose;
         public readonly Pose CameraWorldPose;
         public readonly string Mode;
         public readonly string Note;
 
         public CameraProjectionData(XrCameraIntrinsics intrinsics, in Pose cameraLocalPose)
-            : this(intrinsics, cameraLocalPose, cameraLocalPose, default, default, default, default, null, null)
+            : this(intrinsics, cameraLocalPose, cameraLocalPose, default, default, 0f, 0f, default, default, null, null)
         {
         }
 
@@ -1504,6 +1569,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             in Pose cameraLocalPose,
             in Pose headWorldPose,
             in Pose currentHeadWorldPose,
+            float currentDeviceLinearSpeedMetersPerSecond,
+            float currentDeviceAngularSpeedDegreesPerSecond,
             in Pose trackingOriginWorldPose,
             in Pose cameraWorldPose,
             string mode,
@@ -1514,6 +1581,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             CameraLocalPose = cameraLocalPose;
             HeadWorldPose = headWorldPose;
             CurrentHeadWorldPose = currentHeadWorldPose;
+            CurrentDeviceLinearSpeedMetersPerSecond = currentDeviceLinearSpeedMetersPerSecond;
+            CurrentDeviceAngularSpeedDegreesPerSecond = currentDeviceAngularSpeedDegreesPerSecond;
             TrackingOriginWorldPose = trackingOriginWorldPose;
             CameraWorldPose = cameraWorldPose;
             Mode = mode;
