@@ -1,6 +1,7 @@
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
+using Project.Scripts.Interaction;
 
 namespace Project.Scripts
 {
@@ -11,7 +12,7 @@ namespace Project.Scripts
         [SerializeField] private QrMarkerRegistry qrMarkerRegistry;
         [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
         [SerializeField] private bool createManualQrAnchors = true;
-
+        [SerializeField] private GameObject qrBtnPrefab;
         protected override void Configure(IContainerBuilder builder)
         {
             if (picoHandInput != null)
@@ -43,7 +44,13 @@ namespace Project.Scripts
             builder.Register<QrMarkerPayloadParser>(Lifetime.Singleton)
                 .As<IQrMarkerPayloadParser>();
 
+            if (qrMarkerRegistry != null)
+            {
+                builder.Register<QrFactory>(Lifetime.Singleton);
+            }
+
             builder.RegisterInstance(new QrManualAnchorOptions(createManualQrAnchors));
+            builder.RegisterInstance(new QrManualAnchorVisualOptions(qrBtnPrefab));
 
             if (hasQrPlacementDependencies)
             {

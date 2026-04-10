@@ -1,20 +1,25 @@
 using System;
 using System.Collections.Generic;
 
+using Project.Scripts.Interaction;
 using UnityEngine;
 
 public sealed class QrManualAnchorRegistry : IDisposable
 {
+    private readonly QrFactory qrFactory;
+    private readonly GameObject btnPrefab;
     private const int RequiredSampleCount = 10;
     private const float MaxPositionSpreadMeters = 0.008f;
     private const float MaxRotationSpreadDegrees = 10f;
-    private const float SphereDiameterMeters = 0.04f;
 
     private readonly Dictionary<string, AnchorState> stateByMarkerId =
         new Dictionary<string, AnchorState>(StringComparer.Ordinal);
 
-    private Transform anchorRoot;
-    private Material sphereMaterial;
+    public QrManualAnchorRegistry(QrManualAnchorVisualOptions visualOptions, QrFactory qrFactory)
+    {
+        this.qrFactory = qrFactory;
+        btnPrefab = visualOptions.AnchorPrefab;
+    }
 
     public bool TryGetLockedAnchor(string markerId, out Pose pose)
     {
@@ -89,6 +94,11 @@ public sealed class QrManualAnchorRegistry : IDisposable
         }
 
         var anchorObject = CreateAnchorObject(markerId, averagedPose);
+        if (anchorObject == null)
+        {
+            return AnchorObservationResult.Invalid;
+        }
+
         state.Lock(averagedPose, anchorObject);
         return AnchorObservationResult.Created(
             RequiredSampleCount,
@@ -108,72 +118,12 @@ public sealed class QrManualAnchorRegistry : IDisposable
         }
 
         stateByMarkerId.Clear();
-
-        if (anchorRoot != null)
-        {
-            UnityEngine.Object.Destroy(anchorRoot.gameObject);
-            anchorRoot = null;
-        }
-
-        if (sphereMaterial != null)
-        {
-            UnityEngine.Object.Destroy(sphereMaterial);
-            sphereMaterial = null;
-        }
     }
 
     private GameObject CreateAnchorObject(string markerId, in Pose pose)
     {
-        EnsureAnchorRoot();
-        EnsureSphereMaterial();
-
-        var anchorObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        anchorObject.name = $"QR Manual Anchor [{markerId}]";
-        anchorObject.transform.SetParent(anchorRoot, false);
-        anchorObject.transform.SetPositionAndRotation(pose.position, pose.rotation);
-        anchorObject.transform.localScale = Vector3.one * SphereDiameterMeters;
-
-        if (anchorObject.TryGetComponent<Collider>(out var collider))
-        {
-            UnityEngine.Object.Destroy(collider);
-        }
-
-        if (anchorObject.TryGetComponent<Renderer>(out var renderer) && sphereMaterial != null)
-        {
-            renderer.sharedMaterial = sphereMaterial;
-        }
-
-        return anchorObject;
-    }
-
-    private void EnsureAnchorRoot()
-    {
-        if (anchorRoot != null)
-        {
-            return;
-        }
-
-        var rootObject = new GameObject("QR Manual Anchors");
-        anchorRoot = rootObject.transform;
-    }
-
-    private void EnsureSphereMaterial()
-    {
-        if (sphereMaterial != null)
-        {
-            return;
-        }
-
-        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        if (shader == null)
-        {
-            return;
-        }
-
-        sphereMaterial = new Material(shader)
-        {
-            color = new Color(0.15f, 0.45f, 1f, 1f)
-        };
+        qrFactory.CreateButton(btnPrefab, markerId, pose, out var instance);
+        return instance.gameObject;
     }
 
     private sealed class AnchorState

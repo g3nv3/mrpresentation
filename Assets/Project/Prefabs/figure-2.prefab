@@ -125,6 +125,7 @@ GameObject:
   - component: {fileID: 7100856087658746134}
   - component: {fileID: 5940938593259300996}
   - component: {fileID: -3738016343641249980}
+  - component: {fileID: -5741737941152018093}
   m_Layer: 0
   m_Name: figure-2
   m_TagString: Untagged
@@ -245,6 +246,18 @@ MonoBehaviour:
   precomputeOutline: 0
   bakeKeys: []
   bakeValues: []
+--- !u!114 &-5741737941152018093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8275416528033784763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94695bf641a5c474f8fb976c35f314c5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandPinchDraggable
 --- !u!1 &8458097780529701330
 GameObject:
   m_ObjectHideFlags: 0

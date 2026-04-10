@@ -208,27 +208,33 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         {
             forward = Vector3.ProjectOnPlane(direction, hitNormal);
         }
-
-        var up = hitNormal;
+        
+        var normalForward = hitNormal.sqrMagnitude >= MinAxisMagnitude
+            ? hitNormal.normalized
+            : Vector3.forward;
+        
+        var up = Vector3.ProjectOnPlane(forward, normalForward);
         if (up.sqrMagnitude < MinAxisMagnitude)
         {
-            up = Vector3.up;
+            up = Vector3.ProjectOnPlane(Vector3.up, normalForward);
         }
 
-        if (forward.sqrMagnitude < MinAxisMagnitude)
+        if (up.sqrMagnitude < MinAxisMagnitude)
         {
-            forward = Vector3.Cross(up, Vector3.right);
+            up = Vector3.ProjectOnPlane(Vector3.right, normalForward);
         }
 
-        if (forward.sqrMagnitude < MinAxisMagnitude)
+        if (up.sqrMagnitude < MinAxisMagnitude)
         {
-            forward = Vector3.Cross(up, Vector3.forward);
+            up = Vector3.ProjectOnPlane(Vector3.forward, normalForward);
         }
+
+        up = up.normalized;
 
         var resolvedPosition = centerHit.point + GetSurfaceOffset(hitNormal);
         var resolvedPose = new Pose(
             resolvedPosition,
-            Quaternion.LookRotation(forward.normalized, up));
+            Quaternion.LookRotation(normalForward, up));
         var metricPoseApplied = TryRefineMetricPose(
             context,
             detection,
