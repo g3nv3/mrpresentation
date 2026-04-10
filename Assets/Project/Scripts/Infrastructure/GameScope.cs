@@ -59,11 +59,6 @@ namespace Project.Scripts
                 builder.Register<QrMarkerAutoAnchorService>(Lifetime.Singleton)
                     .As<IQrMarkerPlacementService>();
             }
-            else
-            {
-                builder.Register<NullQrMarkerPlacementService>(Lifetime.Singleton)
-                    .As<IQrMarkerPlacementService>();
-            }
 
             if (picoHandInput != null)
             {
