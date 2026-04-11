@@ -1,4 +1,5 @@
 using System;
+using Project.Scripts.Interaction;
 using UnityEngine;
 using Unity.XR.PXR;
 
@@ -31,7 +32,7 @@ public interface IPicoHandInput
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
 {
     [SerializeField] private HandType handType = HandType.HandRight;
-    [SerializeField] private float pinchDistanceThreshold = 0.013f;
+    [SerializeField] private bool useStrictTrackingValidation = true;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
     [SerializeField] private Transform contactPoint;
@@ -60,7 +61,9 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public event Action<HandContactTarget> ContactEnded;
 
     private readonly Collider[] _contactHits = new Collider[16];
-    private HandPinchDraggable _currentContactDraggable;
+    private static readonly HandLocationStatus RequiredPositionFlags =
+        HandLocationStatus.PositionTracked | HandLocationStatus.PositionValid;
+    private HandPinchDraggableEffect _currentContactDraggableEffect;
     private HandContactTarget _lastContactTarget;
     private bool _wasPinching;
 
@@ -106,10 +109,10 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         CurrentTarget = default;
         CurrentContactTarget = default;
 
-        if (_currentContactDraggable != null)
+        if (_currentContactDraggableEffect != null)
         {
-            _currentContactDraggable.HideGrabEffect();
-            _currentContactDraggable = null;
+            _currentContactDraggableEffect.HideGrabEffect();
+            _currentContactDraggableEffect = null;
         }
     }
 
@@ -120,15 +123,49 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         thumbTip = default;
 
         HandJointLocations joints = new HandJointLocations();
-        bool ok = PXR_HandTracking.GetJointLocations(handType, ref joints);
-        if (!ok || joints.jointLocations == null || joints.jointLocations.Length == 0)
+        if (!PXR_HandTracking.GetJointLocations(handType, ref joints))
+            return false;
+
+        if (joints.jointLocations == null || joints.jointLocations.Length == 0)
+            return false;
+
+        if (useStrictTrackingValidation &&
+            (joints.isActive == 0U ||
+             !HasRequiredPositionStatus(joints, HandJoint.JointWrist) ||
+             !HasRequiredPositionStatus(joints, HandJoint.JointIndexTip) ||
+             !HasRequiredPositionStatus(joints, HandJoint.JointThumbTip)))
+        {
+            return false;
+        }
+
+        HandAimState aimState = new HandAimState();
+        if (!PXR_HandTracking.GetAimState(handType, ref aimState))
+            return false;
+
+        if (useStrictTrackingValidation && (aimState.aimStatus & HandAimStatus.AimComputed) == 0)
             return false;
 
         indexTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointIndexTip].pose.Position);
         thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
-        isPinching = Vector3.Distance(indexTip, thumbTip) < pinchDistanceThreshold;
+        isPinching = (aimState.aimStatus & HandAimStatus.AimIndexPinching) != 0 ||
+                     (aimState.aimStatus & HandAimStatus.AimMiddlePinching) != 0 ||
+                     (aimState.aimStatus & HandAimStatus.AimRingPinching) != 0 ||
+                     (aimState.aimStatus & HandAimStatus.AimLittlePinching) != 0 ||
+                     (aimState.aimStatus & HandAimStatus.AimRayTouched) != 0;
 
         return true;
+    }
+
+    private static bool HasRequiredPositionStatus(HandJointLocations joints, HandJoint joint)
+    {
+        int index = (int)joint;
+        if (index < 0 || index >= joints.jointLocations.Length)
+        {
+            return false;
+        }
+
+        var status = joints.jointLocations[index].locationStatus;
+        return (status & RequiredPositionFlags) == RequiredPositionFlags;
     }
 
     private void UpdatePinchState(bool isPinching)
@@ -242,6 +279,13 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             return false;
         }
 
+        if (useStrictTrackingValidation &&
+            ((aimState.aimStatus & HandAimStatus.AimComputed) == 0 ||
+             (aimState.aimStatus & HandAimStatus.AimRayValid) == 0))
+        {
+            return false;
+        }
+
         Vector3 rayOrigin = ToUnityPos(aimState.aimRayPose.Position);
         Quaternion rayRotation = ToUnityRot(aimState.aimRayPose.Orientation);
         Vector3 rayDirection = (rayRotation * Vector3.forward).normalized;
@@ -262,16 +306,16 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             ? default
             : new HandContactTarget(true, bestCollider, bestPoint);
 
-        HandPinchDraggable nextDraggable = null;
-        CurrentContactTarget.TryGetComponentInParent(out nextDraggable);
-        if (_currentContactDraggable == nextDraggable)
+        HandPinchDraggableEffect nextDraggableEffect = null;
+        CurrentContactTarget.TryGetComponentInParent(out nextDraggableEffect);
+        if (_currentContactDraggableEffect == nextDraggableEffect)
         {
             return;
         }
 
-        _currentContactDraggable?.HideGrabEffect();
-        _currentContactDraggable = nextDraggable;
-        _currentContactDraggable?.ShowGrabEffect();
+        _currentContactDraggableEffect?.HideGrabEffect();
+        _currentContactDraggableEffect = nextDraggableEffect;
+        _currentContactDraggableEffect?.ShowGrabEffect();
     }
 
     private void UpdateContactState()

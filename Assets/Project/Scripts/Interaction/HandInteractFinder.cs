@@ -1,12 +1,38 @@
 using UnityEngine;
 
-public class HandInteractFinder : MonoBehaviour
+namespace Project.Scripts.Interaction
 {
-    private void OnTriggerEnter(Collider other)
+    [RequireComponent(typeof(Rigidbody))]
+    public class HandInteractFinder : MonoBehaviour
     {
-        if (other.TryGetComponent(out IInteraction interaction))
+        private void OnTriggerEnter(Collider other)
         {
-            interaction.Interact();
+            if (other.TryGetComponent(out IPressInteraction pressInteraction))
+            {
+                pressInteraction.BeginPress(gameObject);
+                return;
+            }
+
+            if (other.TryGetComponent(out IInteraction interaction))
+            {
+                interaction.Interact(gameObject);
+            }
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            if (other.TryGetComponent(out IPressInteraction pressInteraction))
+            {
+                pressInteraction.UpdatePress(gameObject);
+            }
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (other.TryGetComponent(out IPressInteraction pressInteraction))
+            {
+                pressInteraction.EndPress(gameObject);
+            }
         }
     }
 }

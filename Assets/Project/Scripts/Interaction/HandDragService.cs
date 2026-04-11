@@ -1,3 +1,4 @@
+using Project.Scripts.Interaction;
 using UnityEngine;
 
 using VContainer;
@@ -47,7 +48,7 @@ public sealed class HandDragService : ITickable
             return;
         }
 
-        if (!contactTarget.TryGetComponentInParent<HandPinchDraggable>(out var draggable))
+        if (!contactTarget.TryGetComponentInParent<HandPinchDraggableEffect>(out var draggable))
         {
             return;
         }

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-
+using Project.Scripts.Interaction.Interactive_Objects;
 using UnityEngine;
 
 using VContainer;
