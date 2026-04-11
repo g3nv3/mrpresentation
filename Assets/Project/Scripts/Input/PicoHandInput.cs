@@ -6,36 +6,38 @@ using Unity.XR.PXR;
 public interface IPicoHandInput
 {
     bool IsTracked { get; }
-    bool PinchDown { get; }
     bool PinchHeld { get; }
-    bool PinchUp { get; }
-    Vector3 PinchPosition { get; }
     Vector3 ContactPosition { get; }
-    Ray AimRay { get; }
-    bool HasRaycastHit { get; }
-    RaycastHit RaycastHit { get; }
-    HandPointerTarget CurrentTarget { get; }
-    HandContactTarget CurrentContactTarget { get; }
-
-    bool TryGetCurrentTarget(out HandPointerTarget target);
-    bool TryGetCurrentTarget(string requiredTag, out HandPointerTarget target);
     bool TryGetCurrentContact(out HandContactTarget target);
-    bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose);
-    bool TryGetCurrentSurfacePose(string requiredTag, float surfaceOffset, out Pose pose);
 
     event Action<HandPointerTarget> PinchStarted;
-    event Action<HandPointerTarget> PinchEnded;
-    event Action<HandContactTarget> ContactStarted;
-    event Action<HandContactTarget> ContactEnded;
 }
 
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
 {
+    private static readonly HandJoint[] FingerTipJoints =
+    {
+        HandJoint.JointIndexTip,
+        HandJoint.JointMiddleTip,
+        HandJoint.JointRingTip,
+        HandJoint.JointLittleTip
+    };
+
+    private static readonly HandJoint[] ContactTipJoints =
+    {
+        HandJoint.JointThumbTip,
+        HandJoint.JointIndexTip,
+        HandJoint.JointMiddleTip,
+        HandJoint.JointRingTip,
+        HandJoint.JointLittleTip
+    };
+
     [SerializeField] private HandType handType = HandType.HandRight;
     [SerializeField] private bool useStrictTrackingValidation = true;
+    [SerializeField] private bool usePinchMidpointForContactPosition = true;
+    [SerializeField] private float pinchDistanceThreshold = 0.02f;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
-    [SerializeField] private Transform contactPoint;
     [SerializeField] private float contactRadius = 0.018f;
     [SerializeField] private LayerMask contactMask = Physics.DefaultRaycastLayers;
     [SerializeField] private bool debugContactGizmo = true;
@@ -56,13 +58,14 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public HandContactTarget CurrentContactTarget { get; private set; }
 
     public event Action<HandPointerTarget> PinchStarted;
-    public event Action<HandPointerTarget> PinchEnded;
     public event Action<HandContactTarget> ContactStarted;
     public event Action<HandContactTarget> ContactEnded;
 
     private readonly Collider[] _contactHits = new Collider[16];
     private static readonly HandLocationStatus RequiredPositionFlags =
         HandLocationStatus.PositionTracked | HandLocationStatus.PositionValid;
+    private readonly Vector3[] _contactTipPoints = new Vector3[5];
+    private int _contactTipCount;
     private HandPinchDraggableEffect _currentContactDraggableEffect;
     private HandContactTarget _lastContactTarget;
     private bool _wasPinching;
@@ -88,9 +91,9 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         IsTracked = true;
         PinchPosition = Vector3.Lerp(indexTip, thumbTip, 0.5f);
-        ContactPosition = contactPoint != null ? contactPoint.position : PinchPosition;
+        ContactPosition = usePinchMidpointForContactPosition ? PinchPosition : indexTip;
         UpdateRaycast();
-        UpdateContactTarget(ContactPosition);
+        UpdateContactTarget();
         UpdateContactState();
         // Subscribers to PinchStarted read the current hit immediately.
         UpdatePinchState(isPinching);
@@ -108,6 +111,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         RaycastHit = default;
         CurrentTarget = default;
         CurrentContactTarget = default;
+        _contactTipCount = 0;
 
         if (_currentContactDraggableEffect != null)
         {
@@ -129,31 +133,40 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         if (joints.jointLocations == null || joints.jointLocations.Length == 0)
             return false;
 
+        var poseJoint = FindClosestPinchFingerTipJoint(joints, out var poseJointPosition);
+        UpdateContactTipPoints(joints);
+
         if (useStrictTrackingValidation &&
-            (joints.isActive == 0U ||
-             !HasRequiredPositionStatus(joints, HandJoint.JointWrist) ||
-             !HasRequiredPositionStatus(joints, HandJoint.JointIndexTip) ||
-             !HasRequiredPositionStatus(joints, HandJoint.JointThumbTip)))
+            !IsStrictPinchPoseValid(joints, poseJoint))
         {
             return false;
         }
 
-        HandAimState aimState = new HandAimState();
-        if (!PXR_HandTracking.GetAimState(handType, ref aimState))
-            return false;
-
-        if (useStrictTrackingValidation && (aimState.aimStatus & HandAimStatus.AimComputed) == 0)
-            return false;
-
-        indexTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointIndexTip].pose.Position);
         thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
-        isPinching = (aimState.aimStatus & HandAimStatus.AimIndexPinching) != 0 ||
-                     (aimState.aimStatus & HandAimStatus.AimMiddlePinching) != 0 ||
-                     (aimState.aimStatus & HandAimStatus.AimRingPinching) != 0 ||
-                     (aimState.aimStatus & HandAimStatus.AimLittlePinching) != 0 ||
-                     (aimState.aimStatus & HandAimStatus.AimRayTouched) != 0;
+        indexTip = poseJointPosition;
+        isPinching = Vector3.Distance(indexTip, thumbTip) <= pinchDistanceThreshold;
 
         return true;
+    }
+
+    private bool IsStrictPinchPoseValid(HandJointLocations joints, HandJoint selectedPinchJoint)
+    {
+        if (joints.isActive == 0U)
+        {
+            return false;
+        }
+
+        if (!HasRequiredPositionStatus(joints, HandJoint.JointWrist))
+        {
+            return false;
+        }
+
+        if (!HasRequiredPositionStatus(joints, HandJoint.JointThumbTip))
+        {
+            return false;
+        }
+
+        return HasRequiredPositionStatus(joints, selectedPinchJoint);
     }
 
     private static bool HasRequiredPositionStatus(HandJointLocations joints, HandJoint joint)
@@ -168,6 +181,51 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         return (status & RequiredPositionFlags) == RequiredPositionFlags;
     }
 
+    private HandJoint FindClosestPinchFingerTipJoint(HandJointLocations joints, out Vector3 tipPosition)
+    {
+        var thumbPosition = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
+        var bestJoint = HandJoint.JointIndexTip;
+        var bestDistance = float.PositiveInfinity;
+        tipPosition = ToUnityPos(joints.jointLocations[(int)bestJoint].pose.Position);
+
+        for (int i = 0; i < FingerTipJoints.Length; i++)
+        {
+            var joint = FingerTipJoints[i];
+            if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+            {
+                continue;
+            }
+
+            var candidatePosition = ToUnityPos(joints.jointLocations[(int)joint].pose.Position);
+            var distance = (candidatePosition - thumbPosition).sqrMagnitude;
+            if (distance >= bestDistance)
+            {
+                continue;
+            }
+
+            bestDistance = distance;
+            bestJoint = joint;
+            tipPosition = candidatePosition;
+        }
+
+        return bestJoint;
+    }
+
+    private void UpdateContactTipPoints(HandJointLocations joints)
+    {
+        _contactTipCount = 0;
+        for (int i = 0; i < ContactTipJoints.Length; i++)
+        {
+            var joint = ContactTipJoints[i];
+            if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+            {
+                continue;
+            }
+
+            _contactTipPoints[_contactTipCount++] = ToUnityPos(joints.jointLocations[(int)joint].pose.Position);
+        }
+    }
+
     private void UpdatePinchState(bool isPinching)
     {
         PinchDown = isPinching && !_wasPinching;
@@ -176,9 +234,6 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         if (PinchDown)
             PinchStarted?.Invoke(CurrentTarget);
-
-        if (PinchUp)
-            PinchEnded?.Invoke(CurrentTarget);
 
         _wasPinching = isPinching;
     }
@@ -192,7 +247,6 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         PinchUp = true;
         _wasPinching = false;
-        PinchEnded?.Invoke(CurrentTarget);
     }
 
     private void ReleaseContactIfNeeded()
@@ -231,32 +285,10 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             sphere.position = hit.point;
     }
 
-    public bool TryGetCurrentTarget(out HandPointerTarget target)
-    {
-        target = CurrentTarget;
-        return target.HasHit;
-    }
-
-    public bool TryGetCurrentTarget(string requiredTag, out HandPointerTarget target)
-    {
-        target = CurrentTarget;
-        return target.HasTag(requiredTag);
-    }
-
     public bool TryGetCurrentContact(out HandContactTarget target)
     {
         target = CurrentContactTarget;
         return target.HasHit;
-    }
-
-    public bool TryGetCurrentSurfacePose(float surfaceOffset, out Pose pose)
-    {
-        return CurrentTarget.TryGetSurfacePose(surfaceOffset, out pose);
-    }
-
-    public bool TryGetCurrentSurfacePose(string requiredTag, float surfaceOffset, out Pose pose)
-    {
-        return CurrentTarget.TryGetSurfacePose(requiredTag, surfaceOffset, out pose);
     }
 
     private Vector3 ToUnityPos(Vector3f p)
@@ -294,13 +326,23 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         return true;
     }
 
-    private void UpdateContactTarget(Vector3 samplePosition)
+    private void UpdateContactTarget()
     {
         var bestDistance = float.PositiveInfinity;
         Collider bestCollider = null;
         var bestPoint = Vector3.zero;
 
-        EvaluateContact(samplePosition, ref bestDistance, ref bestCollider, ref bestPoint);
+        if (_contactTipCount == 0)
+        {
+            EvaluateContact(ContactPosition, ref bestDistance, ref bestCollider, ref bestPoint);
+        }
+        else
+        {
+            for (int i = 0; i < _contactTipCount; i++)
+            {
+                EvaluateContact(_contactTipPoints[i], ref bestDistance, ref bestCollider, ref bestPoint);
+            }
+        }
 
         CurrentContactTarget = bestCollider == null
             ? default
@@ -380,10 +422,21 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             return;
         }
 
-        var gizmoPosition = contactPoint != null ? contactPoint.position : transform.position;
         var previousColor = Gizmos.color;
         Gizmos.color = debugContactGizmoColor;
-        Gizmos.DrawWireSphere(gizmoPosition, contactRadius);
+
+        if (_contactTipCount > 0)
+        {
+            for (int i = 0; i < _contactTipCount; i++)
+            {
+                Gizmos.DrawWireSphere(_contactTipPoints[i], contactRadius);
+            }
+        }
+        else
+        {
+            Gizmos.DrawWireSphere(transform.position, contactRadius);
+        }
+
         Gizmos.color = previousColor;
     }
 }

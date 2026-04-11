@@ -1,10 +1,11 @@
 using Project.Scripts.Interaction;
 using UnityEngine;
+using System;
 
 using VContainer;
 using VContainer.Unity;
 
-public sealed class HandDragService : ITickable
+public sealed class HandDragService : ITickable, IDisposable
 {
     private readonly IPicoHandInput handInput;
 
@@ -19,7 +20,6 @@ public sealed class HandDragService : ITickable
         if (this.handInput != null)
         {
             this.handInput.PinchStarted += HandlePinchStarted;
-            this.handInput.PinchEnded += HandlePinchEnded;
         }
     }
 
@@ -30,7 +30,13 @@ public sealed class HandDragService : ITickable
             return;
         }
 
-        if (handInput == null || !handInput.IsTracked || !handInput.PinchHeld)
+        if (handInput == null)
+        {
+            Release();
+            return;
+        }
+
+        if (!handInput.IsTracked || !handInput.PinchHeld)
         {
             Release();
             return;
@@ -57,14 +63,19 @@ public sealed class HandDragService : ITickable
         localGrabPoint = activeTransform.InverseTransformPoint(contactTarget.Point);
     }
 
-    private void HandlePinchEnded(HandPointerTarget _)
-    {
-        Release();
-    }
-
     private void Release()
     {
         activeTransform = null;
         localGrabPoint = default;
+    }
+
+    public void Dispose()
+    {
+        if (handInput != null)
+        {
+            handInput.PinchStarted -= HandlePinchStarted;
+        }
+
+        Release();
     }
 }

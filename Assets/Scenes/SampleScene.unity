@@ -128,7 +128,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 104978576}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: RayPose
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -160,7 +160,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 210728839}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: RayPose
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -321,7 +321,7 @@ GameObject:
   - component: {fileID: 525994595}
   - component: {fileID: 525994597}
   - component: {fileID: 525994596}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: RawImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -462,7 +462,7 @@ GameObject:
   - component: {fileID: 730769974}
   - component: {fileID: 730769973}
   - component: {fileID: 730769972}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Main Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -855,7 +855,7 @@ GameObject:
   - component: {fileID: 871263448}
   - component: {fileID: 871263447}
   - component: {fileID: 871263451}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: '[Building Block] XR Hand Tracking XR Origin (XR Rig)'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -980,7 +980,7 @@ GameObject:
   m_Component:
   - component: {fileID: 885296193}
   - component: {fileID: 885296194}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Hand Input
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1015,13 +1015,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PicoHandInput
   handType: 1
-  pinchDistanceThreshold: 0.013
+  useStrictTrackingValidation: 1
+  usePinchMidpointForContactPosition: 1
+  pinchDistanceThreshold: 0.02
   rayDistance: 20
   rayMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  contactPoint: {fileID: 1397443339}
-  contactRadius: 0.05
+  contactRadius: 0.03
   contactMask:
     serializedVersion: 2
     m_Bits: 59
@@ -1194,7 +1195,7 @@ GameObject:
   - component: {fileID: 1145447854}
   - component: {fileID: 1145447856}
   - component: {fileID: 1145447855}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1467,7 +1468,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1397443339}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Contact Point
   m_TagString: Untagged
   m_Icon: {fileID: 3306451490063965843, guid: 0000000000000000d000000000000000, type: 0}
@@ -1544,7 +1545,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1636572262}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Camera Offset
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1580,7 +1581,7 @@ GameObject:
   - component: {fileID: 1786698601}
   - component: {fileID: 1786698603}
   - component: {fileID: 1786698602}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: Image
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1657,7 +1658,7 @@ GameObject:
   - component: {fileID: 1942266821}
   - component: {fileID: 1942266820}
   - component: {fileID: 1942266819}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2116,7 +2117,7 @@ GameObject:
   m_Component:
   - component: {fileID: 543450652370352023}
   - component: {fileID: 5336186960391751790}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: DefaultRay
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2133,7 +2134,7 @@ GameObject:
   m_Component:
   - component: {fileID: 543450653042588332}
   - component: {fileID: 5336186961340876117}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: DefaultRay
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2168,6 +2169,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3029536390279617180}
     m_Modifications:
+    - target: {fileID: -9108818021268199097, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -9102174362483085236, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -2212,6 +2221,26 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8508768323209418907, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -7869354913223612464, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -6587826591249100130, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -4835695104628197528, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -1874893379581962891, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: -1185065108108141888, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -2220,14 +2249,70 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: 8a32e873523a4f248aa73b0f2d2eb54a, type: 2}
+    - target: {fileID: -560668778014215660, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -420524703379949302, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -235549664431147067, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 323459660391050965, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_Name
       value: Hand_R
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1098000337801064931, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1409571220338709724, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1666247708728809618, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1827947901042694733, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 3858211842928753076, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4244431900265510163, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4251165251816689224, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4828114949132924054, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_Icon
       value: 
       objectReference: {fileID: -964228994112308473, guid: 0000000000000000d000000000000000, type: 0}
+    - target: {fileID: 4828114949132924054, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5097663134784220768, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 5604008017748928742, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_Layer
       value: 6
@@ -2255,6 +2340,30 @@ PrefabInstance:
     - target: {fileID: 5740914322936265347, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0.0332
+      objectReference: {fileID: 0}
+    - target: {fileID: 6056361309414644824, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6213230390700773943, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6405077112254790724, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6835631525413066500, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7035309104226524932, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 9093516789329007627, guid: ad88f1cd021f7e84193410be2350800d, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2585,7 +2694,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3029536390279617180}
   - component: {fileID: 8992329467426531840}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: '[Building Block] PICO Hand Tracking Right'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2625,6 +2734,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8795879930519852934}
     m_Modifications:
+    - target: {fileID: -9010703307607801013, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -8771643276674294399, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: -8721002785652668686, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -2677,15 +2794,115 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8667817918255630106, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -6258335832552536994, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -4471154509852190341, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -3790136999510126588, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -3769077173896768772, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -3572322654770168007, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -3539863414646965789, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -3134027726690806689, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -1896985442780782569, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: -1427880192554804586, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: -1185065108108141888, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: f819a5fb044d1024baccaa5a88501df2, type: 2}
+    - target: {fileID: -1107880615234747237, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
       propertyPath: m_Name
       value: Hand_L
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1350801076973053126, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1464901770598881906, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 1640550324793501766, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2535585906784766597, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 3557344800266309338, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 3581226997494588776, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 4521254887833292881, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4596678026673098233, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5931395127075334563, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6082119760984836969, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6579008452443985444, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6977604992182858765, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7409229916467497793, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7942752506311688711, guid: 4e85f53470581cf47a1feb7558495287, type: 3}
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
@@ -3226,7 +3443,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8795879930519852934}
   - component: {fileID: 5257869384469961749}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: '[Building Block] PICO Hand Tracking Left'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
