@@ -4,7 +4,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 [Serializable]
-public sealed class QrPoseResolverDebugView
+public sealed class QrPoseResolverDebugView : IQrPoseResolverView
 {
     [SerializeField] private bool isEnabled = true;
     [SerializeField] private bool parentRuntimeRootToHost;
@@ -29,12 +29,7 @@ public sealed class QrPoseResolverDebugView
         SanitizeMarker(resultPointMarkerTemplate);
     }
 
-    public void Show(Vector3 centerPosition, IReadOnlyList<Vector3> resultPointPositions)
-    {
-        Show((Vector3?)centerPosition, resultPointPositions);
-    }
-
-    public void Show(Vector3? centerPosition, IReadOnlyList<Vector3> resultPointPositions)
+    public void Show(Pose? resolvedPose, IReadOnlyList<Vector3> resultPointPositions)
     {
         if (!isEnabled)
         {
@@ -42,9 +37,9 @@ public sealed class QrPoseResolverDebugView
         }
 
         EnsureRuntimeState();
-        if (centerPosition.HasValue)
+        if (resolvedPose.HasValue)
         {
-            UpdateMarker(GetCenterMarker(), centerPosition.Value, true);
+            UpdateMarker(GetCenterMarker(), resolvedPose.Value.position, true);
         }
         else
         {

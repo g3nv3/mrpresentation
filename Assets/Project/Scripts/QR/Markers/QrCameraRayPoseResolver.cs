@@ -7,6 +7,13 @@ using ZXing;
 
 public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 {
+    private enum PoseResolverViewStrategyType
+    {
+        None = 0,
+        Debug = 1,
+        CenterTransform = 2
+    }
+
     private enum CameraExtrinsicsInterpretation
     {
         CameraPoseRelativeToDevice = 0,
@@ -55,7 +62,9 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     [SerializeField, Min(0f)] private float metricPoseMaxReprojectionErrorPixels = 8f;
     [SerializeField] private bool verbosePoseDiagnostics;
     [SerializeField, Min(0.1f)] private float poseDiagnosticsInterval = 0.5f;
+    [SerializeField] private PoseResolverViewStrategyType viewStrategy = PoseResolverViewStrategyType.Debug;
     [SerializeField] private QrPoseResolverDebugView debugView = new QrPoseResolverDebugView();
+    [SerializeField] private QrPoseResolverCenterTransformView centerTransformView = new QrPoseResolverCenterTransformView();
 
     private readonly List<Vector3> debugResultPointPositions = new List<Vector3>(4);
     private bool hasCachedProjectionData;
@@ -70,6 +79,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
     private bool hasFilteredPose;
     private float lastPositionBlend = 1f;
     private float lastRotationBlend = 1f;
+    private IQrPoseResolverView activeView;
 
     public string LastDebugStatus => lastDebugStatus;
     public bool HasLastRay => hasLastRay;
@@ -77,8 +87,8 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 
     private void Awake()
     {
-        GetDebugView().Initialize(transform);
-        GetDebugView().Hide();
+        InitializeView();
+        HideView();
     }
 
     public bool TryResolvePose(in QrDetection detection, QrMarkerDefinition definition, out Pose pose)
@@ -86,7 +96,6 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         pose = default;
         lastDebugStatus = "ray: started";
 
-        var currentDebugView = GetDebugView();
         if (!detection.HasImageCenter || detection.FrameWidth <= 0 || detection.FrameHeight <= 0)
         {
             hasLastRay = false;
@@ -95,7 +104,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                 "ray: no image center\n" +
                 $"frame={FormatFrameSize(detection.FrameWidth, detection.FrameHeight)}\n" +
                 $"points={GetPointCount(detection.ImageResultPoints)}";
-            currentDebugView.Hide();
+            HideView();
             return false;
         }
 
@@ -108,7 +117,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                 "ray: no target camera\n" +
                 $"frame={FormatFrameSize(detection.FrameWidth, detection.FrameHeight)}\n" +
                 $"raw={FormatVector2(detection.ImageCenter)}";
-            currentDebugView.Hide();
+            HideView();
             return false;
         }
 
@@ -124,7 +133,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                 null,
                 null,
                 null);
-            currentDebugView.Hide();
+            HideView();
             return false;
         }
 
@@ -147,7 +156,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
                 null,
                 null,
                 null);
-            currentDebugView.Hide();
+            HideView();
             return false;
         }
 
@@ -158,7 +167,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         {
             debugResultPointPositions.Clear();
             PopulateDebugPointsFromRaycasts(context, detection);
-            UpdateDebugView(null);
+            UpdateView(null);
             lastDebugStatus = BuildDebugStatus(
                 "ray: no surface hit",
                 detection,
@@ -252,7 +261,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
 
         pose = resolvedPose;
 
-        UpdateDebugView(resolvedPose.position);
+        UpdateView(resolvedPose);
         lastDebugStatus = BuildDebugStatus(
             "ray ok: surface hit",
             detection,
@@ -280,7 +289,7 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         lastDebugStatus = "ray: cleared";
         nextPoseDiagnosticsTime = 0f;
         debugResultPointPositions.Clear();
-        GetDebugView().Hide();
+        HideView();
     }
 
     public bool TryGetLastRay(out Ray ray)
@@ -289,9 +298,10 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
         return hasLastRay;
     }
 
-    private void UpdateDebugView(Vector3? centerPosition)
+    private void UpdateView(Pose? resolvedPose)
     {
-        GetDebugView().Show(centerPosition, debugResultPointPositions);
+        var view = GetActiveView();
+        view?.Show(resolvedPose, debugResultPointPositions);
     }
 
     private void PopulateDebugPointsFromRaycasts(CameraProjectionData context, in QrDetection detection)
@@ -1235,14 +1245,33 @@ public sealed class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseResolver
             this);
     }
 
-    private QrPoseResolverDebugView GetDebugView()
+    private void InitializeView()
     {
-        if (debugView == null)
+        var view = GetActiveView();
+        view?.Initialize(transform);
+    }
+
+    private void HideView()
+    {
+        var view = GetActiveView();
+        view?.Hide();
+    }
+
+    private IQrPoseResolverView GetActiveView()
+    {
+        if (activeView != null)
         {
-            debugView = new QrPoseResolverDebugView();
+            return activeView;
         }
 
-        return debugView;
+        activeView = viewStrategy switch
+        {
+            PoseResolverViewStrategyType.Debug => debugView ??= new QrPoseResolverDebugView(),
+            PoseResolverViewStrategyType.CenterTransform => centerTransformView ??= new QrPoseResolverCenterTransformView(),
+            _ => null
+        };
+
+        return activeView;
     }
 
     private static Pose ConvertPluginPose(PxrPosef pose)
