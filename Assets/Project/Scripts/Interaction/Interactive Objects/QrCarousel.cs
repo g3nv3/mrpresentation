@@ -29,6 +29,7 @@ namespace Project.Scripts.Interaction.Interactive_Objects
         [SerializeField] private bool layoutOnStart = true;
         [SerializeField] private List<Transform> items = new List<Transform>();
         [SerializeField, Min(0)] private int initialIndex;
+        [SerializeField] private bool orientItemsToMainCamera = true;
 
         [Header("Gesture")]
         [SerializeField, Range(0f, 1f)] private float followFactor = 0.25f;
@@ -108,6 +109,16 @@ namespace Project.Scripts.Interaction.Interactive_Objects
             {
                 LayoutItems();
             }
+        }
+
+        private void LateUpdate()
+        {
+            if (!orientItemsToMainCamera)
+            {
+                return;
+            }
+
+            OrientItemsToMainCamera();
         }
 
         [ContextMenu("Layout Items")]
@@ -389,6 +400,39 @@ namespace Project.Scripts.Interaction.Interactive_Objects
 
             directionOnPlane = projected.normalized;
             return true;
+        }
+
+        private void OrientItemsToMainCamera()
+        {
+            if (_runtimeItems.Count == 0)
+            {
+                return;
+            }
+
+            var mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                return;
+            }
+
+            var axis = GetRotationAxisWorld();
+            for (var i = 0; i < _runtimeItems.Count; i++)
+            {
+                var item = _runtimeItems[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                var toCamera = mainCamera.transform.position - item.position;
+                var planarToCamera = Vector3.ProjectOnPlane(toCamera, axis);
+                if (planarToCamera.sqrMagnitude < 0.000001f)
+                {
+                    continue;
+                }
+
+                item.rotation = Quaternion.LookRotation(planarToCamera.normalized, axis);
+            }
         }
 
         private void GetLayoutBasis(out Vector3 axisA, out Vector3 axisB)
