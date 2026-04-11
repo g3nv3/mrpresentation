@@ -1449,7 +1449,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.54, y: 1.0000001, z: 1.47}
+  m_Size: {x: 1.54, y: 2.68, z: 1.47}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1145447853
 GameObject:
@@ -3710,6 +3710,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   handType: 0
   Basemesh: {fileID: 5141208930055444089}
+  lockOnValidPose: 0
   handJoints:
   - {fileID: 753516472905083543}
   - {fileID: 5141208930055444089}
@@ -4179,6 +4180,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   handType: 1
   Basemesh: {fileID: 4981180550202822429}
+  lockOnValidPose: 1
   handJoints:
   - {fileID: 6153448792302585097}
   - {fileID: 4981180550202822429}
