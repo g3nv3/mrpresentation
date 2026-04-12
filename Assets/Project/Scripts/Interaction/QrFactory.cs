@@ -67,11 +67,22 @@ namespace Project.Scripts.Interaction
             GameObject buttonPrefab,
             string markerId,
             in Pose pose,
-            out QrButton button)
+            out InteractiveButton button)
         {
             var buttonObject = Object.Instantiate(buttonPrefab, pose.position, pose.rotation);
-            buttonObject.TryGetComponent<QrButton>(out button);
-            button.Initialize(markerId, HandleButtonInteract);
+            buttonObject.TryGetComponent<InteractiveButton>(out button);
+            if (button == null)
+            {
+                return;
+            }
+
+            if (!buttonObject.TryGetComponent<QrObjectSpawner>(out var qrObjectSpawner))
+            {
+                qrObjectSpawner = buttonObject.AddComponent<QrObjectSpawner>();
+            }
+
+            qrObjectSpawner.Initialize(markerId, HandleButtonInteract);
+            button.Initialize(qrObjectSpawner.Spawn);
         }
 
         private void HandleButtonInteract(string markerId, Pose pose)

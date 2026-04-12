@@ -75,6 +75,7 @@ GameObject:
   - component: {fileID: 4360584223695192030}
   - component: {fileID: 2489540868352921580}
   - component: {fileID: 2172806956796551091}
+  - component: {fileID: 6865769407152109393}
   m_Layer: 0
   m_Name: Qr-Btn
   m_TagString: Untagged
@@ -167,15 +168,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 7192741945166447986}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e0233fcfc13a48e4beddccf9209180fc, type: 3}
+  m_Script: {fileID: 11500000, guid: 3f84df061f2f4f82b2bf01dd4533f6b6, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Project.Scripts.Interaction.QrButton
-  markerId: 
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Scripts.Interaction.Interactive_Objects.InteractiveButton
   spawnPoint: {fileID: 6133576372830492138}
   pressStart: {fileID: 1956767846789885699}
   pressEnd: {fileID: 8882024166830644243}
   pressVisual: {fileID: 6449727623253750109}
   pressThreshold: 0.9
+  onPressed:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!65 &2172806956796551091
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -197,6 +200,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.8000005, y: 0.8000005, z: 0.34756035}
   m_Center: {x: 0, y: 0, z: 0.5862218}
+--- !u!114 &6865769407152109393
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7192741945166447986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018c8ec688042aa9fca0bf0f11b9347, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Scripts.Interaction.Interactive_Objects.QrObjectSpawner
+  markerId: 
 --- !u!1 &8421684612671928661
 GameObject:
   m_ObjectHideFlags: 0

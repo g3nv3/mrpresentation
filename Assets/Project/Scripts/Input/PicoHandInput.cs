@@ -35,10 +35,13 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     [SerializeField] private HandType handType = HandType.HandRight;
     [SerializeField] private bool useStrictTrackingValidation = true;
     [SerializeField] private bool usePinchMidpointForContactPosition = true;
-    [SerializeField] private float pinchDistanceThreshold = 0.02f;
+    [SerializeField] private float pinchStartDistanceThreshold = 0.028f;
+    [SerializeField] private float pinchReleaseDistanceThreshold = 0.034f;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
     [SerializeField] private float contactRadius = 0.018f;
+    [SerializeField] private bool highlightRayTargetWhenNoContact = true;
+    [SerializeField] private float rayHighlightMaxDistance = 0.12f;
     [SerializeField] private LayerMask contactMask = Physics.DefaultRaycastLayers;
     [SerializeField] private bool debugContactGizmo = true;
     [SerializeField] private Color debugContactGizmoColor = new Color(0.1f, 0.9f, 0.4f, 0.9f);
@@ -144,7 +147,11 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
         indexTip = poseJointPosition;
-        isPinching = Vector3.Distance(indexTip, thumbTip) <= pinchDistanceThreshold;
+        var pinchDistance = Vector3.Distance(indexTip, thumbTip);
+        var releaseThreshold = Mathf.Max(pinchStartDistanceThreshold, pinchReleaseDistanceThreshold);
+        isPinching = _wasPinching
+            ? pinchDistance <= releaseThreshold
+            : pinchDistance <= pinchStartDistanceThreshold;
 
         return true;
     }
@@ -349,7 +356,14 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             : new HandContactTarget(true, bestCollider, bestPoint);
 
         HandPinchDraggableEffect nextDraggableEffect = null;
-        CurrentContactTarget.TryGetComponentInParent(out nextDraggableEffect);
+        if (!CurrentContactTarget.TryGetComponentInParent(out nextDraggableEffect) &&
+            highlightRayTargetWhenNoContact &&
+            CurrentTarget.HasHit &&
+            (CurrentTarget.Hit.point - ContactPosition).sqrMagnitude <= rayHighlightMaxDistance * rayHighlightMaxDistance)
+        {
+            CurrentTarget.TryGetComponentInParent(out nextDraggableEffect);
+        }
+
         if (_currentContactDraggableEffect == nextDraggableEffect)
         {
             return;
