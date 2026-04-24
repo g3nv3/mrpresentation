@@ -31,6 +31,11 @@ namespace Project.Scripts.Interaction.Interactive_Objects
         [SerializeField, Min(0)] private int initialIndex;
         [SerializeField] private bool orientItemsToMainCamera = true;
 
+        [Header("Collider")]
+        [SerializeField] private CylinderColliderGenerator cylinderColliderGenerator;
+        [SerializeField] private bool syncCylinderCollider = true;
+        [SerializeField] private bool syncColliderSidesWithItemCount = true;
+
         [Header("Gesture")]
         [SerializeField, Range(0f, 1f)] private float followFactor = 0.25f;
         [SerializeField, Min(0.1f)] private float commitThresholdDegrees = 24f;
@@ -70,6 +75,7 @@ namespace Project.Scripts.Interaction.Interactive_Objects
                 wheelRoot = transform;
             }
 
+            TryAssignCylinderColliderGenerator();
             _initialLocalRotation = wheelRoot.localRotation;
             RebuildItemCache();
 
@@ -82,6 +88,10 @@ namespace Project.Scripts.Interaction.Interactive_Objects
             _currentSnappedAngle = _currentIndex * GetStepAngle();
             _renderAngle = _currentSnappedAngle;
             ApplyAngleImmediate(_renderAngle);
+            if (!layoutOnStart)
+            {
+                SyncCylinderCollider();
+            }
         }
 
         private void OnDisable()
@@ -109,6 +119,10 @@ namespace Project.Scripts.Interaction.Interactive_Objects
             {
                 LayoutItems();
             }
+            else
+            {
+                SyncCylinderCollider();
+            }
         }
 
         private void LateUpdate()
@@ -132,6 +146,7 @@ namespace Project.Scripts.Interaction.Interactive_Objects
             RebuildItemCache();
             if (_runtimeItems.Count == 0)
             {
+                SyncCylinderCollider();
                 return;
             }
 
@@ -164,6 +179,8 @@ namespace Project.Scripts.Interaction.Interactive_Objects
                     item.position = wheelRoot.TransformPoint(localPosition);
                 }
             }
+
+            SyncCylinderCollider();
         }
 
         public void BeginPress(GameObject interactor)
@@ -265,6 +282,10 @@ namespace Project.Scripts.Interaction.Interactive_Objects
             if (relayout)
             {
                 LayoutItems();
+            }
+            else
+            {
+                SyncCylinderCollider();
             }
         }
 
@@ -471,6 +492,42 @@ namespace Project.Scripts.Interaction.Interactive_Objects
 
             var wrapped = index % count;
             return wrapped < 0 ? wrapped + count : wrapped;
+        }
+
+        private void TryAssignCylinderColliderGenerator()
+        {
+            if (cylinderColliderGenerator != null)
+            {
+                return;
+            }
+
+            cylinderColliderGenerator = GetComponent<CylinderColliderGenerator>();
+        }
+
+        private void SyncCylinderCollider()
+        {
+            if (!syncCylinderCollider)
+            {
+                return;
+            }
+
+            if (wheelRoot == null)
+            {
+                wheelRoot = transform;
+            }
+
+            TryAssignCylinderColliderGenerator();
+            if (cylinderColliderGenerator == null)
+            {
+                return;
+            }
+
+            if (syncColliderSidesWithItemCount && _runtimeItems.Count > 0)
+            {
+                cylinderColliderGenerator.sides = Mathf.Clamp(_runtimeItems.Count, 3, 64);
+            }
+
+            cylinderColliderGenerator.UpdateCollider(cylinderColliderGenerator.CreateCylinderMesh());
         }
     }
 }
