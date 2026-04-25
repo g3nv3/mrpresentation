@@ -886,7 +886,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit.Samples.Hands::UnityEngine.XR.Interaction.Toolkit.Samples.Hands.ToggleGameObject
   m_ActivationGameObject: {fileID: 1138454476}
-  m_CurrentlyActive: 1
+  m_CurrentlyActive: 0
 --- !u!1 &444668023
 GameObject:
   m_ObjectHideFlags: 0
@@ -3071,7 +3071,7 @@ MeshCollider:
   serializedVersion: 5
   m_Convex: 1
   m_CookingOptions: 30
-  m_Mesh: {fileID: 1580709288}
+  m_Mesh: {fileID: 1518479635}
 --- !u!114 &1138454483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3090,7 +3090,7 @@ MonoBehaviour:
   center: {x: 0, y: 0, z: 0}
   rotation: {x: -0, y: 0, z: 0}
   _meshCollider: {fileID: 1138454482}
-  _currentMesh: {fileID: 1580709288}
+  _currentMesh: {fileID: 1518479635}
 --- !u!114 &1138454484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3105,6 +3105,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HardLockToTarget
   targetTransform: {fileID: 730769971}
   offset: {x: 0, y: -0.3, z: 0}
+  lockOnStart: 1
 --- !u!1 &1145447853
 GameObject:
   m_ObjectHideFlags: 0
@@ -3716,101 +3717,7 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!1 &1529253605
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 6497335866026053725, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
-  m_PrefabInstance: {fileID: 3964512752133238850}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2108840515241547873}
-  m_Layer: 6
-  m_Name: Hand_R
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!1 &1546513616
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1546513618}
-  - component: {fileID: 1546513617}
-  m_Layer: 0
-  m_Name: XR Interaction Manager (1)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1546513617
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1546513616}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 83e4e6cca11330d4088d729ab4fc9d9f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.XRInteractionManager
-  m_StartingHoverFilters: []
-  m_StartingSelectFilters: []
---- !u!4 &1546513618
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1546513616}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1550360847
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 4908970031913274076, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
-  m_PrefabInstance: {fileID: 3964512752133238850}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7085269136822706544}
-  m_Layer: 6
-  m_Name: right_ring_distal
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!1 &1579853788
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 4656783330053241750, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
-  m_PrefabInstance: {fileID: 3964512752133238850}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4402649509714835758}
-  m_Layer: 6
-  m_Name: left_index_metacarpal
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!43 &1580709288
+--- !u!43 &1518479635
 Mesh:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -3988,6 +3895,100 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
+--- !u!1 &1529253605
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 6497335866026053725, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
+  m_PrefabInstance: {fileID: 3964512752133238850}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2108840515241547873}
+  m_Layer: 6
+  m_Name: Hand_R
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!1 &1546513616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1546513618}
+  - component: {fileID: 1546513617}
+  m_Layer: 0
+  m_Name: XR Interaction Manager (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1546513617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546513616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83e4e6cca11330d4088d729ab4fc9d9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.XRInteractionManager
+  m_StartingHoverFilters: []
+  m_StartingSelectFilters: []
+--- !u!4 &1546513618
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546513616}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1550360847
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 4908970031913274076, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
+  m_PrefabInstance: {fileID: 3964512752133238850}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7085269136822706544}
+  m_Layer: 6
+  m_Name: right_ring_distal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!1 &1579853788
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 4656783330053241750, guid: 75a093abbe72cba4e8758331d65636d2, type: 3}
+  m_PrefabInstance: {fileID: 3964512752133238850}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4402649509714835758}
+  m_Layer: 6
+  m_Name: left_index_metacarpal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
 --- !u!1 &1605583829
 GameObject:
   m_ObjectHideFlags: 0
@@ -4785,6 +4786,25 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 1923865058565818179, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
   m_PrefabInstance: {fileID: 2023391044515950843}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1784322804
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1784322803}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52f88304d313427b9788543b3697c5cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Scripts.Interaction.ShadowCaster
+  shadowPrefab: {fileID: 3908532987782016435, guid: 4f68d382f53cef140b44434877f368d9, type: 3}
+  groundLayerMask:
+    serializedVersion: 2
+    m_Bits: 8
+  shadowScaleAdd: 0.08
+  maxVisibleHeight: 0.8
+  maxScaleMultiplier: 1.6
 --- !u!1 &1786698600
 GameObject:
   m_ObjectHideFlags: 0
@@ -5352,15 +5372,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QrMarkerRegistry
   markers:
-  - markerId: figure-1
-    prefab: {fileID: 5439064939918472258, guid: 6731ae08c6f49ff449eff5efbe071b21, type: 3}
+  - markerId: banana
+    prefab: {fileID: 3948294368684195521, guid: 9ded3cff71aae8345adea705408ae466, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
     qrCodeSizeMeters: 0.1
     qrModuleCount: 21
     enableMetricPoseRefinement: 1
-  - markerId: figure-2
-    prefab: {fileID: 8275416528033784763, guid: 4982997e3ecc9684687db44006b5fa2f, type: 3}
+  - markerId: slime
+    prefab: {fileID: 6977587816824960091, guid: e6c87b4005580e345a2fbfadf3a2c21a, type: 3}
     positionOffset: {x: 0, y: 0, z: 0}
     rotationOffset: {x: 0, y: 0, z: 0}
     qrCodeSizeMeters: 0.1
@@ -6264,15 +6284,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6597152918212701058, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.1437
+      value: -0.1362
       objectReference: {fileID: 0}
     - target: {fileID: 6597152918212701058, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0679
+      value: 0.064
       objectReference: {fileID: 0}
     - target: {fileID: 6597152918212701058, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.07
+      value: 0.2211
       objectReference: {fileID: 0}
     - target: {fileID: 6597152918212701058, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
       propertyPath: m_LocalRotation.w
@@ -6305,7 +6325,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1923865058565818179, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1784322804}
   m_SourcePrefab: {fileID: 100100000, guid: fb1f115a5a4981f498ad4124bdf882a7, type: 3}
 --- !u!4 &2029002559818535233
 Transform:
