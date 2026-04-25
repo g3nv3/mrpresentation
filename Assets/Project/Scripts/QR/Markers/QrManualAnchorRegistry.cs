@@ -7,6 +7,7 @@ using UnityEngine;
 public sealed class QrManualAnchorRegistry : IDisposable
 {
     private readonly QrFactory qrFactory;
+    private readonly IQrMarkerRegistry markerRegistry;
     private readonly GameObject btnPrefab;
     private const int RequiredSampleCount = 10;
     private const float MaxPositionSpreadMeters = 0.008f;
@@ -15,9 +16,13 @@ public sealed class QrManualAnchorRegistry : IDisposable
     private readonly Dictionary<string, AnchorState> stateByMarkerId =
         new Dictionary<string, AnchorState>(StringComparer.Ordinal);
 
-    public QrManualAnchorRegistry(QrManualAnchorVisualOptions visualOptions, QrFactory qrFactory)
+    public QrManualAnchorRegistry(
+        QrManualAnchorVisualOptions visualOptions,
+        QrFactory qrFactory,
+        IQrMarkerRegistry markerRegistry)
     {
         this.qrFactory = qrFactory;
+        this.markerRegistry = markerRegistry;
         btnPrefab = visualOptions.AnchorPrefab;
     }
 
@@ -122,8 +127,23 @@ public sealed class QrManualAnchorRegistry : IDisposable
 
     private GameObject CreateAnchorObject(string markerId, in Pose pose)
     {
+        if (markerRegistry != null &&
+            markerRegistry.TryGet(markerId, out var definition) &&
+            definition != null &&
+            definition.MarkerSpawnMode == QrMarkerDefinition.SpawnMode.DirectObject)
+        {
+            return qrFactory.TryCreateMarker(markerId, pose, out var objectInstance)
+                ? objectInstance
+                : null;
+        }
+
+        if (btnPrefab == null)
+        {
+            return null;
+        }
+
         qrFactory.CreateButton(btnPrefab, markerId, pose, out var instance);
-        return instance.gameObject;
+        return instance != null ? instance.gameObject : null;
     }
 
     private sealed class AnchorState

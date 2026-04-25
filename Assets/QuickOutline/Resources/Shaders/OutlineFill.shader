@@ -11,7 +11,7 @@ Shader "Custom/Outline Fill" {
     [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Float) = 0
 
     _OutlineColor("Outline Color", Color) = (1, 1, 1, 1)
-    _OutlineWidth("Outline Width", Range(0, 10)) = 2
+    _OutlineWidth("Outline Width (px)", Range(0, 20)) = 2
   }
 
   SubShader {
@@ -65,8 +65,16 @@ Shader "Custom/Outline Fill" {
         float3 normal = any(input.smoothNormal) ? input.smoothNormal : input.normal;
         float3 viewPosition = UnityObjectToViewPos(input.vertex);
         float3 viewNormal = normalize(mul((float3x3)UNITY_MATRIX_IT_MV, normal));
+        float4 clipPosition = UnityViewToClipPos(viewPosition);
 
-        output.position = UnityViewToClipPos(viewPosition + viewNormal * -viewPosition.z * _OutlineWidth / 1000.0);
+        // Use projected normal direction and convert width from pixels to NDC,
+        // then to clip-space via multiplication by w for distance-independent thickness.
+        float2 projectedNormal = TransformViewToProjection(viewNormal.xy);
+        float2 projectedDir = projectedNormal / (length(projectedNormal) + 1e-6);
+        float2 ndcPerPixel = 2.0 / _ScreenParams.xy;
+        clipPosition.xy += projectedDir * (_OutlineWidth * ndcPerPixel) * clipPosition.w;
+
+        output.position = clipPosition;
         output.color = _OutlineColor;
 
         return output;

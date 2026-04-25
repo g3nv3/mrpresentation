@@ -8,6 +8,7 @@ public interface IPicoHandInput
     bool IsTracked { get; }
     bool PinchHeld { get; }
     Vector3 ContactPosition { get; }
+    Quaternion ContactRotation { get; }
     bool TryGetCurrentContact(out HandContactTarget target);
 
     event Action<HandPointerTarget> PinchStarted;
@@ -54,6 +55,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public bool PinchUp { get; private set; }
     public Vector3 PinchPosition { get; private set; }
     public Vector3 ContactPosition { get; private set; }
+    public Quaternion ContactRotation { get; private set; } = Quaternion.identity;
     public Ray AimRay { get; private set; }
     public bool HasRaycastHit { get; private set; }
     public RaycastHit RaycastHit { get; private set; }
@@ -109,6 +111,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         PinchUp = false;
         PinchPosition = default;
         ContactPosition = default;
+        ContactRotation = Quaternion.identity;
         AimRay = default;
         HasRaycastHit = false;
         RaycastHit = default;
@@ -147,6 +150,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
 
         thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
         indexTip = poseJointPosition;
+        ContactRotation = ToUnityRot(joints.jointLocations[(int)HandJoint.JointWrist].pose.Orientation);
         var pinchDistance = Vector3.Distance(indexTip, thumbTip);
         var releaseThreshold = Mathf.Max(pinchStartDistanceThreshold, pinchReleaseDistanceThreshold);
         isPinching = _wasPinching

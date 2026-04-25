@@ -5,17 +5,23 @@ using System;
 using VContainer;
 using VContainer.Unity;
 
-public sealed class HandDragService : ITickable, IDisposable
+public sealed class HandDragService : ILateTickable, IDisposable
 {
     private readonly IPicoHandInput handInput;
 
     private Transform activeTransform;
     private Rigidbody activeRigidbody;
-    private Vector3 localGrabPoint;
+    private Vector3 initialHandPosition;
+    private Quaternion initialHandRotation;
+    private Vector3 initialObjectPosition;
+    private Quaternion initialObjectRotation;
+    private bool hasInitialGrabPose;
     private Vector3 lastContactPosition;
     private Vector3 throwVelocity;
     private bool hasLastContactPosition;
     private float lastPinchHeldTime;
+    private RigidbodyInterpolation previousRigidbodyInterpolation = RigidbodyInterpolation.None;
+    private bool hasPreviousRigidbodyInterpolation;
 
     private const float ThrowVelocitySmoothing = 0.45f;
     private const float PinchLossGraceSeconds = 0.08f;
@@ -31,7 +37,7 @@ public sealed class HandDragService : ITickable, IDisposable
         }
     }
 
-    public void Tick()
+    public void LateTick()
     {
         if (activeTransform == null)
         {
@@ -59,18 +65,28 @@ public sealed class HandDragService : ITickable, IDisposable
         }
 
         var targetPoint = handInput.ContactPosition;
+        var targetRotation = handInput.ContactRotation;
         UpdateThrowVelocity(targetPoint);
 
-        var worldGrabOffset = activeTransform.TransformVector(localGrabPoint);
-        var targetPosition = targetPoint - worldGrabOffset;
+        if (!hasInitialGrabPose)
+        {
+            Release();
+            return;
+        }
+
+        var deltaRotation = targetRotation * Quaternion.Inverse(initialHandRotation);
+        var objectRotation = deltaRotation * initialObjectRotation;
+        var initialObjectOffsetFromHand = initialObjectPosition - initialHandPosition;
+        var targetPosition = targetPoint + deltaRotation * initialObjectOffsetFromHand;
 
         if (activeRigidbody != null)
         {
             activeRigidbody.position = targetPosition;
+            activeRigidbody.rotation = objectRotation;
             return;
         }
 
-        activeTransform.position = targetPosition;
+        activeTransform.SetPositionAndRotation(targetPosition, objectRotation);
     }
 
     private void HandlePinchStarted(HandPointerTarget _)
@@ -94,10 +110,21 @@ public sealed class HandDragService : ITickable, IDisposable
         var draggableTransform = draggable.transform;
         activeRigidbody = draggableTransform.GetComponentInParent<Rigidbody>();
         activeTransform = activeRigidbody != null ? activeRigidbody.transform : draggableTransform;
-        localGrabPoint = activeTransform.InverseTransformPoint(grabPoint);
+        initialHandPosition = grabPoint;
+        initialHandRotation = handInput.ContactRotation;
+        initialObjectPosition = activeTransform.position;
+        initialObjectRotation = activeTransform.rotation;
+        hasInitialGrabPose = true;
 
         if (activeRigidbody != null)
         {
+            if (!hasPreviousRigidbodyInterpolation)
+            {
+                previousRigidbodyInterpolation = activeRigidbody.interpolation;
+                hasPreviousRigidbodyInterpolation = true;
+            }
+
+            activeRigidbody.interpolation = RigidbodyInterpolation.None;
             activeRigidbody.isKinematic = true;
         }
 
@@ -111,17 +138,28 @@ public sealed class HandDragService : ITickable, IDisposable
     {
         if (activeRigidbody != null)
         {
+            if (hasPreviousRigidbodyInterpolation)
+            {
+                activeRigidbody.interpolation = previousRigidbodyInterpolation;
+                hasPreviousRigidbodyInterpolation = false;
+            }
+
             activeRigidbody.isKinematic = false;
             activeRigidbody.linearVelocity = throwVelocity;
         }
 
         activeTransform = null;
         activeRigidbody = null;
-        localGrabPoint = default;
+        initialHandPosition = default;
+        initialHandRotation = Quaternion.identity;
+        initialObjectPosition = default;
+        initialObjectRotation = Quaternion.identity;
+        hasInitialGrabPose = false;
         lastContactPosition = default;
         throwVelocity = default;
         hasLastContactPosition = false;
         lastPinchHeldTime = 0f;
+        previousRigidbodyInterpolation = RigidbodyInterpolation.None;
     }
 
     private void UpdateThrowVelocity(Vector3 currentContactPosition)

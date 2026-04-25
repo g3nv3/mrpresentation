@@ -34,10 +34,14 @@ namespace Project.Scripts.Interaction
         {
             if (Physics.Raycast(transform.position, -Vector3.up, out var hit, Mathf.Infinity, groundLayerMask))
             {
+                _shadow.gameObject.SetActive(true);
                 _shadow.position = hit.point + Vector3.up * 0.01f;
                 _shadowRenderer.color = Color.Lerp(_startColor, _endColor, hit.distance / maxVisibleHeight);
                 _shadow.localScale = Vector3.Lerp(_startScale, _startScale * maxScaleMultiplier, hit.distance / maxVisibleHeight);
+                return;
             }
+            
+            _shadow.gameObject.SetActive(false);
         }
     }
 }
