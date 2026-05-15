@@ -10,15 +10,12 @@ public sealed class PicoQrCodeReader
     private float scanIntervalSeconds;
 
     private float nextScanTime;
-    private string lastDecodedText;
     private bool lastDecodeAttempted;
     private byte[] rgbaBuffer;
     private byte[] luminanceBuffer;
     private byte[] rowBuffer;
 
-    public string LastDecodedText => lastDecodedText;
     public bool LastDecodeAttempted => lastDecodeAttempted;
-    public event Action<QrDetection> OnRead;
 
     public float ScanIntervalSeconds
     {
@@ -103,8 +100,6 @@ public sealed class PicoQrCodeReader
             captureTime,
             imageId);
 
-        lastDecodedText = result.Text;
-        OnRead?.Invoke(detection);
         return true;
     }
 

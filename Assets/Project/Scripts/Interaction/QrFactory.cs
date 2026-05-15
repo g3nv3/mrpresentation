@@ -46,23 +46,6 @@ namespace Project.Scripts.Interaction
             return instance != null;
         }
 
-        public bool TryGetSpawnedMarker(string markerId, out GameObject instance)
-        {
-            instance = null;
-            if (string.IsNullOrWhiteSpace(markerId))
-            {
-                return false;
-            }
-
-            if (!spawnedByMarkerId.TryGetValue(markerId, out var spawned) || spawned == null)
-            {
-                return false;
-            }
-
-            instance = spawned;
-            return true;
-        }
-
         public void CreateButton(
             GameObject buttonPrefab,
             string markerId,

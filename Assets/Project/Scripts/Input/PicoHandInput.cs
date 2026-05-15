@@ -12,6 +12,7 @@ public interface IPicoHandInput
     bool TryGetCurrentContact(out HandContactTarget target);
 
     event Action<HandPointerTarget> PinchStarted;
+    event Action<HandPointerTarget> DoublePinchStarted;
 }
 
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
@@ -38,6 +39,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     [SerializeField] private bool usePinchMidpointForContactPosition = true;
     [SerializeField] private float pinchStartDistanceThreshold = 0.028f;
     [SerializeField] private float pinchReleaseDistanceThreshold = 0.034f;
+    [SerializeField] private float doublePinchMaxIntervalSeconds = 0.35f;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
     [SerializeField] private float contactRadius = 0.018f;
@@ -63,6 +65,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public HandContactTarget CurrentContactTarget { get; private set; }
 
     public event Action<HandPointerTarget> PinchStarted;
+    public event Action<HandPointerTarget> DoublePinchStarted;
     public event Action<HandContactTarget> ContactStarted;
     public event Action<HandContactTarget> ContactEnded;
 
@@ -74,6 +77,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     private HandPinchDraggableEffect _currentContactDraggableEffect;
     private HandContactTarget _lastContactTarget;
     private bool _wasPinching;
+    private float _lastPinchStartedTime = float.NegativeInfinity;
 
     private void Start()
     {
@@ -244,7 +248,19 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         PinchUp = !isPinching && _wasPinching;
 
         if (PinchDown)
+        {
             PinchStarted?.Invoke(CurrentTarget);
+
+            if (Time.unscaledTime - _lastPinchStartedTime <= doublePinchMaxIntervalSeconds)
+            {
+                DoublePinchStarted?.Invoke(CurrentTarget);
+                _lastPinchStartedTime = float.NegativeInfinity;
+            }
+            else
+            {
+                _lastPinchStartedTime = Time.unscaledTime;
+            }
+        }
 
         _wasPinching = isPinching;
     }

@@ -1,19 +1,7 @@
-using System;
-
 using UnityEngine;
 
 namespace Project.Scripts
 {
-    public sealed class QrManualAnchorOptions
-    {
-        public bool CreateAnchors { get; }
-
-        public QrManualAnchorOptions(bool createAnchors)
-        {
-            CreateAnchors = createAnchors;
-        }
-    }
-
     public sealed class QrMarkerAutoAnchorService : IQrMarkerPlacementService
     {
         private const string UnsupportedPayloadPrompt = "QR найден, но формат не поддерживается";

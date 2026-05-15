@@ -11,6 +11,16 @@ namespace Project.Scripts
         [SerializeField] private PicoCameraRenderTextureSource picoCameraRenderTextureSource;
         [SerializeField] private QrMarkerRegistry qrMarkerRegistry;
         [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
+        [Tooltip("Optional Yandex Route API client registered as IYandexRouteClient.")]
+        [SerializeField] private YandexMapsRouteClient yandexMapsRouteClient;
+        [Tooltip("Optional Yandex Geocoder API client registered as IYandexGeocoderClient.")]
+        [SerializeField] private YandexGeocoderClient yandexGeocoderClient;
+        [Tooltip("Optional headset route presenter registered as IYandexRoutePresenter.")]
+        [SerializeField] private YandexHelmetRoutePresenter yandexHelmetRoutePresenter;
+        [Tooltip("Optional route facade registered as IYandexHelmetNavigator.")]
+        [SerializeField] private YandexHelmetNavigator yandexHelmetNavigator;
+        [Tooltip("Optional spatial mesh building probe registered as ISpatialMeshYandexBuildingProbe.")]
+        [SerializeField] private SpatialMeshYandexBuildingProbe spatialMeshYandexBuildingProbe;
         [SerializeField] private bool createManualQrAnchors = true;
         [SerializeField] private GameObject qrBtnPrefab;
         protected override void Configure(IContainerBuilder builder)
@@ -58,6 +68,36 @@ namespace Project.Scripts
 
                 builder.Register<QrMarkerAutoAnchorService>(Lifetime.Singleton)
                     .As<IQrMarkerPlacementService>();
+            }
+
+            if (yandexMapsRouteClient != null)
+            {
+                builder.RegisterComponent(yandexMapsRouteClient)
+                    .As<IYandexRouteClient>();
+            }
+
+            if (yandexGeocoderClient != null)
+            {
+                builder.RegisterComponent(yandexGeocoderClient)
+                    .As<IYandexGeocoderClient>();
+            }
+
+            if (yandexHelmetRoutePresenter != null)
+            {
+                builder.RegisterComponent(yandexHelmetRoutePresenter)
+                    .As<IYandexRoutePresenter>();
+            }
+
+            if (yandexHelmetNavigator != null)
+            {
+                builder.RegisterComponent(yandexHelmetNavigator)
+                    .As<IYandexHelmetNavigator>();
+            }
+
+            if (spatialMeshYandexBuildingProbe != null)
+            {
+                builder.RegisterComponent(spatialMeshYandexBuildingProbe)
+                    .As<ISpatialMeshYandexBuildingProbe>();
             }
 
             if (picoHandInput != null)
