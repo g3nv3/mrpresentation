@@ -6,10 +6,10 @@ using UnityEngine;
 [Serializable]
 public struct GeoCoordinate
 {
-    [Tooltip("Latitude in degrees. Positive values are north of the equator.")]
+    [Tooltip("Широта в градусах. Положительные значения находятся севернее экватора.")]
     public double Latitude;
 
-    [Tooltip("Longitude in degrees. Positive values are east of Greenwich.")]
+    [Tooltip("Долгота в градусах. Положительные значения находятся восточнее Гринвича.")]
     public double Longitude;
 
     public GeoCoordinate(double latitude, double longitude)

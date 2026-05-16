@@ -12,28 +12,28 @@ public sealed class YandexMapsRouteClient : MonoBehaviour, IYandexRouteClient
     private const string DefaultEndpoint = "https://api.routing.yandex.net/v2/route";
 
     [Header("Yandex API")]
-    [Tooltip("Yandex Maps API key with access to Route API.")]
+    [Tooltip("Ключ Yandex Maps API с доступом к Route API.")]
     [SerializeField] private string apiKey;
 
-    [Tooltip("Route API endpoint. Leave default unless Yandex changes the endpoint or a proxy is used.")]
+    [Tooltip("Endpoint Route API. Оставь значение по умолчанию, если Yandex не изменил endpoint и не используется прокси.")]
     [SerializeField] private string endpoint = DefaultEndpoint;
 
-    [Tooltip("Default travel mode used by convenience request methods.")]
+    [Tooltip("Режим перемещения по умолчанию для упрощенных методов запроса маршрута.")]
     [SerializeField] private YandexRouteTravelMode defaultMode = YandexRouteTravelMode.Walking;
 
-    [Tooltip("Adds avoid_tolls=true for route requests unless the request overrides this value.")]
+    [Tooltip("Добавляет avoid_tolls=true в запрос маршрута, если конкретный запрос не переопределяет это значение.")]
     [SerializeField] private bool avoidTolls;
 
-    [Tooltip("Adds avoid_unpaved=true for route requests unless the request overrides this value.")]
+    [Tooltip("Добавляет avoid_unpaved=true в запрос маршрута, если конкретный запрос не переопределяет это значение.")]
     [SerializeField] private bool avoidUnpaved;
 
-    [Tooltip("Adds avoid_poor_condition=true for route requests unless the request overrides this value.")]
+    [Tooltip("Добавляет avoid_poor_condition=true в запрос маршрута, если конкретный запрос не переопределяет это значение.")]
     [SerializeField] private bool avoidPoorCondition;
 
-    [Tooltip("Disables traffic consideration for route requests when enabled.")]
+    [Tooltip("Отключает учет пробок при построении маршрута.")]
     [SerializeField] private bool disableTraffic;
 
-    [Tooltip("Network timeout for route API requests in seconds.")]
+    [Tooltip("Таймаут сетевого запроса к Route API в секундах.")]
     [SerializeField, Min(1f)] private float timeoutSeconds = 15f;
 
     public YandexRouteTravelMode DefaultMode

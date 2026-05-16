@@ -11,15 +11,15 @@ namespace Project.Scripts
         [SerializeField] private PicoCameraRenderTextureSource picoCameraRenderTextureSource;
         [SerializeField] private QrMarkerRegistry qrMarkerRegistry;
         [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
-        [Tooltip("Optional Yandex Route API client registered as IYandexRouteClient.")]
+        [Tooltip("Необязательный клиент Yandex Route API, регистрируется как IYandexRouteClient.")]
         [SerializeField] private YandexMapsRouteClient yandexMapsRouteClient;
-        [Tooltip("Optional Yandex Geocoder API client registered as IYandexGeocoderClient.")]
+        [Tooltip("Необязательный клиент Yandex Geocoder API, регистрируется как IYandexGeocoderClient.")]
         [SerializeField] private YandexGeocoderClient yandexGeocoderClient;
-        [Tooltip("Optional headset route presenter registered as IYandexRoutePresenter.")]
+        [Tooltip("Необязательный presenter маршрута в шлеме, регистрируется как IYandexRoutePresenter.")]
         [SerializeField] private YandexHelmetRoutePresenter yandexHelmetRoutePresenter;
-        [Tooltip("Optional route facade registered as IYandexHelmetNavigator.")]
+        [Tooltip("Необязательный фасад маршрутизации, регистрируется как IYandexHelmetNavigator.")]
         [SerializeField] private YandexHelmetNavigator yandexHelmetNavigator;
-        [Tooltip("Optional spatial mesh building probe registered as ISpatialMeshYandexBuildingProbe.")]
+        [Tooltip("Необязательная проверка зданий по spatial mesh, регистрируется как ISpatialMeshYandexBuildingProbe.")]
         [SerializeField] private SpatialMeshYandexBuildingProbe spatialMeshYandexBuildingProbe;
         [SerializeField] private bool createManualQrAnchors = true;
         [SerializeField] private GameObject qrBtnPrefab;

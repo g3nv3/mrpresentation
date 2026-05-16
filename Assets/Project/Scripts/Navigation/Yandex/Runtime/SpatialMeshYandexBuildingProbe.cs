@@ -6,36 +6,36 @@ using UnityEngine;
 public sealed class SpatialMeshYandexBuildingProbe : MonoBehaviour, ISpatialMeshYandexBuildingProbe
 {
     [Header("Dependencies")]
-    [Tooltip("Client used to ask Yandex Geocoder what object exists at the raycast hit coordinate.")]
+    [Tooltip("Клиент, через который Yandex Geocoder проверяет объект в координате попадания raycast.")]
     [SerializeField] private YandexGeocoderClient geocoderClient;
 
     [Header("Spatial Mesh Raycast")]
-    [Tooltip("Layer mask for Pico spatial mesh colliders. In this scene MRMesh is layer 3, so the mask is 8.")]
+    [Tooltip("Маска слоев для коллайдеров Pico spatial mesh. В этой сцене MRMesh находится на слое 3, поэтому маска равна 8.")]
     [SerializeField] private LayerMask spatialMeshMask = Physics.DefaultRaycastLayers;
 
-    [Tooltip("Maximum raycast distance from the supplied origin.")]
+    [Tooltip("Максимальная дистанция raycast от переданной точки origin.")]
     [SerializeField, Min(0.01f)] private float maxDistance = 30f;
 
-    [Tooltip("Controls whether trigger colliders are considered by the spatial mesh raycast.")]
+    [Tooltip("Определяет, учитываются ли trigger-коллайдеры при raycast по spatial mesh.")]
     [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
 
-    [Tooltip("When enabled, only hits on MeshCollider are accepted as spatial mesh hits.")]
+    [Tooltip("Если включено, попаданием в spatial mesh считается только попадание в MeshCollider.")]
     [SerializeField] private bool requireMeshCollider = true;
 
     [Header("Geo Anchor")]
-    [Tooltip("World transform that represents geoAnchorCoordinate in Unity space. Usually XR Origin or another calibrated world anchor.")]
+    [Tooltip("Трансформ в Unity, который соответствует Geo Anchor Coordinate. Обычно это XR Origin или другой откалиброванный якорь.")]
     [SerializeField] private Transform geoAnchorTransform;
 
-    [Tooltip("Real-world coordinate at geoAnchorTransform. Must be set before probe results can be geocoded correctly.")]
+    [Tooltip("Реальная координата точки Geo Anchor Transform. Ее нужно задать, чтобы hit point корректно переводился в широту и долготу.")]
     [SerializeField] private GeoCoordinate geoAnchorCoordinate;
 
-    [Tooltip("How many Unity units represent one real meter for converting hit offsets to latitude/longitude.")]
+    [Tooltip("Сколько Unity units соответствует одному реальному метру при переводе смещения hit point в широту и долготу.")]
     [SerializeField, Min(0.001f)] private float metersToUnityScale = 1f;
 
-    [Tooltip("Uses geoAnchorTransform rotation when converting local hit offsets to east/north meters.")]
+    [Tooltip("Использует поворот Geo Anchor Transform при переводе локального смещения hit point в восток/север.")]
     [SerializeField] private bool rotateWithAnchor = true;
 
-    [Tooltip("Uses only anchor yaw for geo conversion, ignoring pitch and roll.")]
+    [Tooltip("Использует только поворот якоря по Y, игнорируя наклон вперед/назад и крен.")]
     [SerializeField] private bool yawOnlyRotation = true;
 
     private void Awake()

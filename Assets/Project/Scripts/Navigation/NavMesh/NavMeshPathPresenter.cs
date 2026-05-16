@@ -6,25 +6,49 @@ using UnityEngine.AI;
 public sealed class NavMeshPathPresenter : MonoBehaviour
 {
     [Header("Path")]
+    [Tooltip("Трансформ начала пути. Если не задан, используется трансформ этого компонента.")]
     [SerializeField] private Transform pathStart;
+
+    [Tooltip("Смещение в мировых координатах, добавляемое к каждой точке линии. Обычно это небольшой подъем над полом.")]
     [SerializeField] private Vector3 floorOffset = new Vector3(0f, 0.03f, 0f);
+
+    [Tooltip("Радиус поиска ближайшей точки NavMesh для начала и цели маршрута.")]
     [SerializeField] private float navMeshSampleRadius = 1.5f;
+
+    [Tooltip("Маска областей NavMesh, передаваемая в NavMesh.SamplePosition и NavMesh.CalculatePath.")]
     [SerializeField] private int areaMask = NavMesh.AllAreas;
+
+    [Tooltip("Разрешает показывать частичный путь, если Unity не смогла построить полный маршрут.")]
     [SerializeField] private bool showPartialPaths;
 
     [Header("Floor Raycast")]
+    [Tooltip("Проецирует точки отображаемого пути на коллайдеры пола перед отрисовкой.")]
     [SerializeField] private bool useFloorRaycast = true;
+
+    [Tooltip("Маска слоев для raycast-проекции на пол.")]
     [SerializeField] private LayerMask floorRaycastMask = ~0;
+
+    [Tooltip("Высота над исходной точкой, откуда начинается raycast вниз для поиска пола.")]
     [SerializeField] private float floorRaycastStartHeight = 1.5f;
+
+    [Tooltip("Дополнительная дистанция ниже исходной точки, проверяемая raycast-ом пола.")]
     [SerializeField] private float floorRaycastDistance = 3f;
+
+    [Tooltip("Максимальный угол между нормалью поверхности и направлением вверх, при котором поверхность считается полом.")]
     [SerializeField, Range(0f, 90f)] private float maxFloorAngle = 45f;
 
     [Header("Refresh")]
+    [Tooltip("Периодически перестраивает видимый путь, пока активна цель.")]
     [SerializeField] private bool refreshWhileActive = true;
+
+    [Tooltip("Интервал в секундах между автоматическими перестроениями пути.")]
     [SerializeField] private float refreshInterval = 0.25f;
 
     [Header("Rendering")]
+    [Tooltip("LineRenderer, которым рисуется путь по NavMesh.")]
     [SerializeField] private LineRenderer lineRenderer;
+
+    [Tooltip("Очищает и выключает линию при Awake.")]
     [SerializeField] private bool hideOnStart = true;
 
     private readonly NavMeshPath _path = new NavMeshPath();

@@ -12,22 +12,22 @@ public sealed class YandexGeocoderClient : MonoBehaviour, IYandexGeocoderClient
     private const string HouseKind = "house";
 
     [Header("Yandex Geocoder API")]
-    [Tooltip("Yandex Maps API key with access to Geocoder API.")]
+    [Tooltip("Ключ Yandex Maps API с доступом к Geocoder API.")]
     [SerializeField] private string apiKey;
 
-    [Tooltip("Geocoder API endpoint. Leave default unless Yandex changes the endpoint or a proxy is used.")]
+    [Tooltip("Endpoint Geocoder API. Оставь значение по умолчанию, если Yandex не изменил endpoint и не используется прокси.")]
     [SerializeField] private string endpoint = DefaultEndpoint;
 
-    [Tooltip("Response language, for example ru_RU or en_US.")]
+    [Tooltip("Язык ответа, например ru_RU или en_US.")]
     [SerializeField] private string language = "ru_RU";
 
-    [Tooltip("Reverse geocoder object kind. 'house' asks Yandex to return buildings and addresses.")]
+    [Tooltip("Тип объекта для reverse geocode. Значение 'house' просит Yandex вернуть здания и адреса.")]
     [SerializeField] private string reverseKind = HouseKind;
 
-    [Tooltip("Maximum number of geocoder results to request.")]
+    [Tooltip("Максимальное количество результатов, запрашиваемых у геокодера.")]
     [SerializeField, Min(1)] private int results = 1;
 
-    [Tooltip("Network timeout for geocoder requests in seconds.")]
+    [Tooltip("Таймаут сетевого запроса к геокодеру в секундах.")]
     [SerializeField, Min(1f)] private float timeoutSeconds = 10f;
 
     public void SetApiKey(string value)

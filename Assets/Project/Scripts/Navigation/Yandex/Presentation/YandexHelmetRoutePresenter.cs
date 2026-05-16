@@ -6,33 +6,33 @@ using UnityEngine;
 public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePresenter
 {
     [Header("Player Anchor")]
-    [Tooltip("Transform used as the route origin in the headset. If empty, this component transform is used.")]
+    [Tooltip("Трансформ, относительно которого маршрут отображается в шлеме. Если не задан, используется трансформ этого компонента.")]
     [SerializeField] private Transform playerTransform;
 
-    [Tooltip("Local offset from the player transform where the route line starts.")]
+    [Tooltip("Локальное смещение от трансформа игрока, где начинается линия маршрута.")]
     [SerializeField] private Vector3 routeOffset = new Vector3(0f, -0.35f, 1.2f);
 
-    [Tooltip("Rebuilds line positions every LateUpdate so the route follows the player.")]
+    [Tooltip("Пересчитывает точки линии каждый LateUpdate, чтобы маршрут следовал за игроком.")]
     [SerializeField] private bool followPlayerTransform = true;
 
-    [Tooltip("Rotates the route with the player transform.")]
+    [Tooltip("Поворачивает маршрут вместе с трансформом игрока.")]
     [SerializeField] private bool rotateWithPlayer = true;
 
-    [Tooltip("Uses only player yaw for route rotation, keeping the line level.")]
+    [Tooltip("Использует только поворот игрока по Y, чтобы линия оставалась горизонтальной.")]
     [SerializeField] private bool yawOnlyRotation = true;
 
     [Header("Route Projection")]
-    [Tooltip("Scale from real route meters to Unity units for headset visualization.")]
+    [Tooltip("Масштаб перевода реальных метров маршрута в Unity units для отображения в шлеме.")]
     [SerializeField, Min(0.001f)] private float metersToUnityScale = 0.03f;
 
-    [Tooltip("Maximum number of route points sent to LineRenderer.")]
+    [Tooltip("Максимальное количество точек маршрута, передаваемых в LineRenderer.")]
     [SerializeField, Min(2)] private int maxRenderedPoints = 256;
 
     [Header("Rendering")]
-    [Tooltip("LineRenderer used to draw the Yandex route.")]
+    [Tooltip("LineRenderer, которым рисуется маршрут Yandex.")]
     [SerializeField] private LineRenderer lineRenderer;
 
-    [Tooltip("Clears and disables the line on Awake.")]
+    [Tooltip("Очищает и выключает линию при Awake.")]
     [SerializeField] private bool hideOnStart = true;
 
     private readonly List<Vector3> _localRoutePoints = new List<Vector3>();

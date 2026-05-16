@@ -7,9 +7,16 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class PicoSpatialMeshNavMeshBuilder : MonoBehaviour
 {
+    [Tooltip("Менеджер Pico spatial mesh, который сообщает о добавлении, обновлении и удалении mesh.")]
     [SerializeField] private PXR_SpatialMeshManager spatialMeshManager;
+
+    [Tooltip("NavMeshSurface, который перестраивается при изменении Pico spatial mesh.")]
     [SerializeField] private NavMeshSurface navMeshSurface;
+
+    [Tooltip("Задержка перед перестроением после изменения spatial mesh, чтобы объединять частые обновления.")]
     [SerializeField] private float rebuildDelay = 0.25f;
+
+    [Tooltip("Запрашивает первичное перестроение NavMesh в Start.")]
     [SerializeField] private bool rebuildOnStart;
 
     private Coroutine _rebuildRoutine;

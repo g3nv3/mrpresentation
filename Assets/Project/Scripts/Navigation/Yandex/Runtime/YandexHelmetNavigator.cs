@@ -5,23 +5,23 @@ using UnityEngine;
 public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigator
 {
     [Header("Dependencies")]
-    [Tooltip("Client that requests routes from Yandex Route API.")]
+    [Tooltip("Клиент, который запрашивает маршруты через Yandex Route API.")]
     [SerializeField] private YandexMapsRouteClient routeClient;
 
-    [Tooltip("Presenter that draws the returned route in headset space.")]
+    [Tooltip("Presenter, который рисует полученный маршрут в пространстве шлема.")]
     [SerializeField] private YandexHelmetRoutePresenter routePresenter;
 
     [Header("Default Route")]
-    [Tooltip("Optional start coordinate for default route and CurrentCoordinate initialization.")]
+    [Tooltip("Необязательная стартовая координата для маршрута по умолчанию и инициализации CurrentCoordinate.")]
     [SerializeField] private GeoCoordinate startCoordinate;
 
-    [Tooltip("Optional finish coordinate for the default route shown on Start.")]
+    [Tooltip("Необязательная конечная координата маршрута по умолчанию, который можно показать на Start.")]
     [SerializeField] private GeoCoordinate finishCoordinate;
 
-    [Tooltip("Copies Start Coordinate into CurrentCoordinate during Awake when Start Coordinate is valid.")]
+    [Tooltip("Копирует Start Coordinate в CurrentCoordinate во время Awake, если Start Coordinate валидна.")]
     [SerializeField] private bool useStartCoordinateAsCurrent = true;
 
-    [Tooltip("Requests and draws the default route on Start.")]
+    [Tooltip("Запрашивает и рисует маршрут по умолчанию в Start.")]
     [SerializeField] private bool showDefaultRouteOnStart;
 
     private Coroutine _activeRequest;
