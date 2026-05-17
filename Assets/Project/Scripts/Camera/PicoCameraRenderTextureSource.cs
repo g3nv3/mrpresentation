@@ -61,6 +61,8 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     private const XrCameraModelPICO ActiveModel = XrCameraModelPICO.XR_CAMERA_MODEL_PINHOLE_PICO;
 
     public RenderTexture TargetTexture => textureRenderer?.TargetTexture ?? targetTexture;
+    public RawImage PreviewRawImage => previewRawImage;
+    public XrCameraIdPICO CurrentCameraId => isInitialized ? activeCameraId : preferredCameraId;
     public bool IsInitialized => isInitialized;
     public PxrResult LastAcquireResult => lastAcquireResult;
     public string LastDecodedQrText => lastDecodedQrText;

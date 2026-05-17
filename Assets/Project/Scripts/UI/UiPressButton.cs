@@ -6,7 +6,7 @@ using UnityEngine.Events;
 namespace Project.Scripts.UI
 {
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(Collider))]
+    [RequireComponent(typeof(BoxCollider))]
     public sealed class UiPressButton : MonoBehaviour, IPressInteraction
     {
         private enum PressInvokeMode
