@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-[RequireComponent(typeof(LineRenderer))]
 public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePresenter
 {
     [Header("Player Anchor")]
@@ -25,17 +24,15 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     [Tooltip("Масштаб перевода реальных метров маршрута в Unity units для отображения в шлеме.")]
     [SerializeField, Min(0.001f)] private float metersToUnityScale = 0.03f;
 
-    [Tooltip("Максимальное количество точек маршрута, передаваемых в LineRenderer.")]
+    [Tooltip("Максимальное количество точек маршрута, передаваемых в отображение.")]
     [SerializeField, Min(2)] private int maxRenderedPoints = 256;
 
     [Header("Rendering")]
-    [Tooltip("LineRenderer, которым рисуется маршрут Yandex.")]
-    [SerializeField] private LineRenderer lineRenderer;
-
-    [Tooltip("Очищает и выключает линию при Awake.")]
-    [SerializeField] private bool hideOnStart = true;
+    [Tooltip("Компонент, который отображает рассчитанные точки маршрута.")]
+    [SerializeField] private RoutePathView pathView;
 
     private readonly List<Vector3> _localRoutePoints = new List<Vector3>();
+    private readonly List<Vector3> _worldRoutePoints = new List<Vector3>();
     private YandexRouteData _currentRoute;
 
     public Transform PlayerTransform
@@ -59,23 +56,14 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     }
 
     public YandexRouteData CurrentRoute => _currentRoute;
-    public bool IsVisible => lineRenderer != null && lineRenderer.enabled && lineRenderer.positionCount > 1;
+    public bool IsVisible => pathView != null && pathView.IsVisible;
 
     private Transform AnchorTransform => playerTransform != null ? playerTransform : transform;
 
     private void Awake()
     {
-        if (lineRenderer == null)
-        {
-            lineRenderer = GetComponent<LineRenderer>();
-        }
-
-        lineRenderer.useWorldSpace = true;
-
-        if (hideOnStart)
-        {
-            DisableRoute();
-        }
+        EnsureDependencies();
+        pathView?.Hide();
     }
 
     private void LateUpdate()
@@ -128,14 +116,15 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     {
         _currentRoute = null;
         _localRoutePoints.Clear();
-        HideRenderer();
+        _worldRoutePoints.Clear();
+        pathView?.Hide();
     }
 
     public void RebuildView()
     {
         if (_localRoutePoints.Count < 2)
         {
-            HideRenderer();
+            pathView?.Hide();
             return;
         }
 
@@ -152,13 +141,21 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
         RouteOffset = offset;
     }
 
+    private void EnsureDependencies()
+    {
+        if (pathView == null)
+        {
+            pathView = GetComponent<RoutePathView>();
+        }
+    }
+
     private bool TryBuildLocalRoute(IReadOnlyList<GeoCoordinate> routePoints)
     {
         _localRoutePoints.Clear();
 
         if (routePoints == null || routePoints.Count < 2)
         {
-            HideRenderer();
+            pathView?.Hide();
             return false;
         }
 
@@ -189,9 +186,11 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
 
     private bool DrawLocalRoute()
     {
-        if (lineRenderer == null || _localRoutePoints.Count < 2)
+        EnsureDependencies();
+
+        if (pathView == null || _localRoutePoints.Count < 2)
         {
-            HideRenderer();
+            pathView?.Hide();
             return false;
         }
 
@@ -199,14 +198,13 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
         var rotation = GetRouteRotation(anchor);
         var origin = GetRouteOrigin(anchor, rotation);
 
-        lineRenderer.positionCount = _localRoutePoints.Count;
+        _worldRoutePoints.Clear();
         for (var i = 0; i < _localRoutePoints.Count; i++)
         {
-            lineRenderer.SetPosition(i, origin + rotation * _localRoutePoints[i]);
+            _worldRoutePoints.Add(origin + rotation * _localRoutePoints[i]);
         }
 
-        lineRenderer.enabled = true;
-        return true;
+        return pathView.Show(_worldRoutePoints);
     }
 
     private Vector3 GetRouteOrigin(Transform anchor, Quaternion rotation)
@@ -232,16 +230,5 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
         }
 
         return Quaternion.Euler(0f, anchor.eulerAngles.y, 0f);
-    }
-
-    private void HideRenderer()
-    {
-        if (lineRenderer == null)
-        {
-            return;
-        }
-
-        lineRenderer.positionCount = 0;
-        lineRenderer.enabled = false;
     }
 }

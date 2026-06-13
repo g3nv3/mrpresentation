@@ -13,6 +13,12 @@ Navigation/
 ├── NavMesh/
 │   ├── NavMeshPathPresenter.cs
 │   └── PicoSpatialMeshNavMeshBuilder.cs
+├── Presentation/
+│   ├── IRoutePointProjector.cs
+│   ├── RouteEndpointMarkerView.cs
+│   ├── RouteFloorProjector.cs
+│   ├── RouteLineRendererView.cs
+│   └── RoutePathView.cs
 └── Yandex/
     ├── Api/
     │   ├── YandexGeocoderClient.cs
@@ -31,10 +37,22 @@ Navigation/
 : общий документ по назначению, настройке, публичному API и ограничениям навигационных классов.
 
 `NavMesh/NavMeshPathPresenter.cs`
-: строит локальный путь через `NavMesh.CalculatePath`, проецирует точки на пол при необходимости и рисует маршрут через `LineRenderer`.
+: строит локальный путь через `NavMesh.CalculatePath`, при необходимости привязывает начало и цель к полу через `IRoutePointProjector` и передает рассчитанные точки в `RoutePathView`.
 
 `NavMesh/PicoSpatialMeshNavMeshBuilder.cs`
 : слушает события `PXR_SpatialMeshManager` и перестраивает `NavMeshSurface`, чтобы Unity NavMesh соответствовал актуальному Pico spatial mesh.
+
+`Presentation/RoutePathView.cs`
+: общий visual facade маршрута. Управляет основной линией, endpoint-маркером и подложкой/тенью; если тень включена и `Floor Shadow Line` не назначен, создает дочерний `LineRenderer` автоматически.
+
+`Presentation/RouteLineRendererView.cs`
+: рисует переданные Unity-точки через `LineRenderer`. Может использовать `IRoutePointProjector`, поэтому подходит и для NavMesh, и для Yandex-маршрутов.
+
+`Presentation/RouteFloorProjector.cs`
+: raycast-проектор точки на пол. Используется NavMesh-логикой для начала/цели и visual-компонентами для линии, тени и маркера.
+
+`Presentation/RouteEndpointMarkerView.cs`
+: переносит и включает/выключает объект маркера конечной точки маршрута.
 
 `Yandex/Api/YandexMapsRouteClient.cs`
 : низкоуровневый клиент Yandex Route API. Собирает URL запроса маршрута, отправляет `UnityWebRequest`, парсит `legs[].steps[].polyline.points` и возвращает `YandexRouteResult`.
@@ -43,7 +61,7 @@ Navigation/
 : низкоуровневый клиент Yandex Geocoder API. Делает reverse geocode по координате, запрашивает `kind=house` и возвращает адресные данные через `YandexReverseGeocodeResult`.
 
 `Yandex/Presentation/YandexHelmetRoutePresenter.cs`
-: преобразует географические точки маршрута Yandex в локальные Unity-точки и рисует их около игрока или шлема по `Route Offset`.
+: преобразует географические точки маршрута Yandex в локальные Unity-точки около игрока или шлема по `Route Offset` и передает их в общий `RoutePathView`.
 
 `Yandex/Runtime/YandexHelmetNavigator.cs`
 : фасад для запроса маршрута и его отображения. Объединяет `YandexMapsRouteClient` и `YandexHelmetRoutePresenter`, хранит текущую координату и дает удобные методы `ShowRoute`, `ShowRouteTo`, `RequestAndShowRoute`.
@@ -77,6 +95,16 @@ Navigation/
 Сейчас `Geo Anchor Coordinate` оставлен невалидным (`999, 999`), чтобы случайно не отправлять запросы с ложной координатой.
 
 `Spatial Mesh Mask` настроен на слой `MRMesh` (`m_Bits: 8`). Это слой, на котором находится `MeshPrefab` Pico spatial mesh.
+
+Отображение маршрута собирается из общих presentation-компонентов:
+
+- `RoutePathView` - назначает основную линию, тень и endpoint-маркер.
+- `RouteLineRendererView` - ставится на объект с `LineRenderer`.
+- `RouteFloorProjector` - назначается в `RouteLineRendererView/Point Projector`, `RouteEndpointMarkerView/Point Projector` и `NavMeshPathPresenter/Floor Projector`, если точки нужно класть на физический пол.
+
+По умолчанию `RoutePathView/Auto Create Floor Shadow` создает дочерний объект тени сам. Для кастомной тени можно вручную назначить свой `RouteLineRendererView` в `RoutePathView/Floor Shadow Line`; тогда автогенерация не используется.
+
+`NavMeshPathPresenter` и `YandexHelmetRoutePresenter` используют один и тот же `RoutePathView`, поэтому стили линии, подложка маршрута и endpoint-маркер переиспользуются без зависимости от источника маршрута.
 
 ## Публичный API
 
