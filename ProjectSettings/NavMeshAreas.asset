@@ -87,5 +87,22 @@ NavMeshProjectSettings:
     accuratePlacement: 0
     debug:
       m_Flags: 0
+  - serializedVersion: 2
+    agentTypeID: -887442657
+    agentRadius: 0.1
+    agentHeight: 1.6
+    agentSlope: 55
+    agentClimb: 0.15
+    ledgeDropHeight: 0
+    maxJumpAcrossDistance: 0
+    minRegionArea: 0
+    manualCellSize: 0
+    cellSize: 0.033333335
+    manualTileSize: 0
+    tileSize: 256
+    accuratePlacement: 0
+    debug:
+      m_Flags: 0
   m_SettingNames:
   - Humanoid
+  - Pico Spatial Route

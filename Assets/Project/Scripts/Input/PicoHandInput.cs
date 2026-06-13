@@ -431,12 +431,11 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         for (var i = 0; i < hitCount; i++)
         {
             var collider = _contactHits[i];
-            if (collider == null)
+            if (!TryGetSafeClosestPoint(collider, samplePosition, out var closestPoint))
             {
                 continue;
             }
 
-            var closestPoint = collider.ClosestPoint(samplePosition);
             var distance = (closestPoint - samplePosition).sqrMagnitude;
             if (distance >= bestDistance)
             {
@@ -447,6 +446,24 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             bestCollider = collider;
             bestPoint = closestPoint;
         }
+    }
+
+    private static bool TryGetSafeClosestPoint(Collider collider, Vector3 samplePosition, out Vector3 closestPoint)
+    {
+        closestPoint = default;
+
+        if (collider == null)
+        {
+            return false;
+        }
+
+        if (collider is MeshCollider meshCollider && !meshCollider.convex)
+        {
+            return false;
+        }
+
+        closestPoint = collider.ClosestPoint(samplePosition);
+        return true;
     }
 
     private void OnDrawGizmos()

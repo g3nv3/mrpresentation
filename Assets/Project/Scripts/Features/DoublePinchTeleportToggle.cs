@@ -7,6 +7,8 @@ public sealed class DoublePinchTeleportToggle : MonoBehaviour
     [SerializeField] private Transform playerPoint;
     [SerializeField] private PicoHandInput handInputOverride;
     [SerializeField] private bool deactivateOnStart;
+    [Tooltip("Если включено, объект получает полный rotation из Player Point. Если выключено, применяется только поворот вокруг Y.")]
+    [SerializeField] private bool rotateAroundAllAxes = true;
 
     private IPicoHandInput _handInput;
 
@@ -73,9 +75,20 @@ public sealed class DoublePinchTeleportToggle : MonoBehaviour
         if (nextActive)
         {
             var targetPose = playerPoint != null ? playerPoint : transform;
-            targetObject.transform.SetPositionAndRotation(targetPose.position, targetPose.rotation);
+            targetObject.transform.SetPositionAndRotation(targetPose.position, GetTargetRotation(targetPose));
         }
 
         targetObject.SetActive(nextActive);
+    }
+
+    private Quaternion GetTargetRotation(Transform targetPose)
+    {
+        if (rotateAroundAllAxes)
+        {
+            return targetPose.rotation;
+        }
+
+        var eulerAngles = targetPose.rotation.eulerAngles;
+        return Quaternion.Euler(0f, eulerAngles.y, 0f);
     }
 }
