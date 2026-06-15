@@ -20,7 +20,7 @@ namespace Project.Scripts.UI
             EnsureReferences();
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
             Unbind();
         }
@@ -57,8 +57,6 @@ namespace Project.Scripts.UI
 
         private void Refresh(bool isOn)
         {
-            EnsureReferences();
-
             if (targetObject == null)
             {
                 return;
@@ -69,10 +67,6 @@ namespace Project.Scripts.UI
 
         private void EnsureReferences()
         {
-            if (targetObject == null)
-            {
-                targetObject = gameObject;
-            }
         }
     }
 }
