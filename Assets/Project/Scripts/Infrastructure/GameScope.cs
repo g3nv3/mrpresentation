@@ -2,6 +2,7 @@ using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 using Project.Scripts.Interaction;
+using Project.Scripts.UI;
 
 namespace Project.Scripts
 {
@@ -21,6 +22,12 @@ namespace Project.Scripts
         [SerializeField] private YandexHelmetNavigator yandexHelmetNavigator;
         [Tooltip("Необязательная проверка зданий по spatial mesh, регистрируется как ISpatialMeshYandexBuildingProbe.")]
         [SerializeField] private SpatialMeshYandexBuildingProbe spatialMeshYandexBuildingProbe;
+        [Tooltip("Менеджер UI-окон, регистрируется как IUiWindowManager.")]
+        [SerializeField] private UiWindowManager uiWindowManager;
+        [Tooltip("Prefab runtime-кнопки для UiGeneratedButtonSource.")]
+        [SerializeField] private GameObject generatedUiButtonPrefab;
+        [Tooltip("Presenter, в который runtime-кнопки пробрасывают действие BuildPathTo.")]
+        [SerializeField] private NavMeshPathPresenter navMeshPathPresenter;
         [SerializeField] private bool createManualQrAnchors = true;
         [SerializeField] private GameObject qrBtnPrefab;
         protected override void Configure(IContainerBuilder builder)
@@ -99,6 +106,19 @@ namespace Project.Scripts
                 builder.RegisterComponent(spatialMeshYandexBuildingProbe)
                     .As<ISpatialMeshYandexBuildingProbe>();
             }
+
+            builder.RegisterInstance(new UiGeneratedButtonOptions(
+                generatedUiButtonPrefab,
+                navMeshPathPresenter));
+
+
+            builder.RegisterComponent(uiWindowManager)
+                .As<IUiWindowManager>();
+            builder.Register<UiGeneratedButtonSpawner>(Lifetime.Singleton)
+                .As<IUiGeneratedButtonSpawner>();
+
+
+            builder.RegisterComponent(navMeshPathPresenter);
 
             if (picoHandInput != null)
             {

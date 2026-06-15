@@ -11,5 +11,6 @@ namespace Project.Scripts.UI
         void Open(GameObject window);
         void CloseCurrent();
         bool IsOpen(string windowId);
+        bool TryGetGeneratedButtonParent(UiGeneratedButtonWindow window, out Transform parent);
     }
 }

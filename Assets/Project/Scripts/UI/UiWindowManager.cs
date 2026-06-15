@@ -9,6 +9,8 @@ namespace Project.Scripts.UI
     {
         [Tooltip("Список UI-окон, которыми управляет менеджер. При открытии одного окна остальные зарегистрированные окна скрываются.")]
         [SerializeField] private List<UiWindowBinding> windows = new();
+        [Tooltip("Родители, в которые генератор будет добавлять runtime-кнопки для выбранного окна.")]
+        [SerializeField] private List<UiGeneratedButtonParentBinding> generatedButtonParents = new();
         [Tooltip("ID окна, которое будет открыто при старте. Оставьте пустым, если стартовое окно не нужно.")]
         [SerializeField] private string initialWindowId;
 
@@ -88,6 +90,22 @@ namespace Project.Scripts.UI
             return currentWindow != null && currentWindow.activeSelf && currentWindowId == windowId;
         }
 
+        public bool TryGetGeneratedButtonParent(UiGeneratedButtonWindow window, out Transform parent)
+        {
+            foreach (var binding in generatedButtonParents)
+            {
+                if (binding.Window == window && binding.Parent != null)
+                {
+                    parent = binding.Parent;
+                    return true;
+                }
+            }
+
+            parent = null;
+            Debug.LogError($"Generated UI button parent for window '{window}' is not registered.", this);
+            return false;
+        }
+
         private void OpenInternal(string windowId, GameObject window)
         {
             for (var i = 0; i < windows.Count; i++)
@@ -114,6 +132,16 @@ namespace Project.Scripts.UI
 
             public string Id => id;
             public GameObject Window => window;
+        }
+
+        [Serializable]
+        private sealed class UiGeneratedButtonParentBinding
+        {
+            [SerializeField] private UiGeneratedButtonWindow window;
+            [SerializeField] private Transform parent;
+
+            public UiGeneratedButtonWindow Window => window;
+            public Transform Parent => parent;
         }
     }
 }

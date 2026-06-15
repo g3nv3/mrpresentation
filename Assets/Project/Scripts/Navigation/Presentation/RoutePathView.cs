@@ -10,6 +10,8 @@ public sealed class RoutePathView : MonoBehaviour
 
     [Tooltip("Необязательная подложка/тень маршрута. Может использовать тот же проектор точки на пол.")]
     [SerializeField] private RouteLineRendererView floorShadowLine;
+    [Tooltip("Необязательный маркер конечной точки.")]
+    [SerializeField] private RouteEndpointMarkerView endpointMarker;
 
     [Header("Generated Floor Shadow")]
     [Tooltip("Автоматически создает дочерний LineRenderer тени, если Floor Shadow Line не назначен.")]
@@ -27,8 +29,6 @@ public sealed class RoutePathView : MonoBehaviour
     [Tooltip("Имя дочернего объекта, который будет создан для тени.")]
     [SerializeField] private string generatedFloorShadowName = "Route Floor Shadow";
 
-    [Tooltip("Необязательный маркер конечной точки.")]
-    [SerializeField] private RouteEndpointMarkerView endpointMarker;
 
     public bool IsVisible => pathLine != null && pathLine.IsVisible;
 

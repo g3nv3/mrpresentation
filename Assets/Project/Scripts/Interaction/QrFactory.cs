@@ -5,7 +5,6 @@ using UnityEngine;
 
 using VContainer;
 using VContainer.Unity;
-using Object = UnityEngine.Object;
 
 namespace Project.Scripts.Interaction
 {
@@ -52,7 +51,7 @@ namespace Project.Scripts.Interaction
             in Pose pose,
             out InteractiveButton button)
         {
-            var buttonObject = Object.Instantiate(buttonPrefab, pose.position, pose.rotation);
+            var buttonObject = objectResolver.Instantiate(buttonPrefab, pose.position, pose.rotation);
             buttonObject.TryGetComponent<InteractiveButton>(out button);
             if (button == null)
             {
