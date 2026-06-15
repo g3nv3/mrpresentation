@@ -40,6 +40,9 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     [SerializeField] private float pinchStartDistanceThreshold = 0.028f;
     [SerializeField] private float pinchReleaseDistanceThreshold = 0.034f;
     [SerializeField] private float doublePinchMaxIntervalSeconds = 0.35f;
+    [SerializeField] private bool requirePalmUpForPinch = true;
+    [SerializeField, Range(0f, 180f)] private float palmUpMaxAngleDegrees = 60f;
+    [SerializeField] private Transform palmUpDirectionTransform;
     [SerializeField] private float rayDistance = 20f;
     [SerializeField] private LayerMask rayMask;
     [SerializeField] private float contactRadius = 0.018f;
@@ -161,7 +164,29 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             ? pinchDistance <= releaseThreshold
             : pinchDistance <= pinchStartDistanceThreshold;
 
+        if (isPinching && !IsPalmUpPinchAllowed(ContactRotation))
+        {
+            isPinching = false;
+        }
+
         return true;
+    }
+
+    private bool IsPalmUpPinchAllowed(Quaternion wristRotation)
+    {
+        if (!requirePalmUpForPinch)
+        {
+            return true;
+        }
+
+        if (palmUpDirectionTransform == null)
+        {
+            return false;
+        }
+
+        var localPalmUpDirection = palmUpDirectionTransform.localRotation * Vector3.down;
+        var palmUpDirection = wristRotation * localPalmUpDirection;
+        return Vector3.Angle(palmUpDirection, Vector3.up) <= palmUpMaxAngleDegrees;
     }
 
     private bool IsStrictPinchPoseValid(HandJointLocations joints, HandJoint selectedPinchJoint)

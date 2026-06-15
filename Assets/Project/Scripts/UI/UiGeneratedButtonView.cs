@@ -8,6 +8,7 @@ namespace Project.Scripts.UI
     {
         [SerializeField] private UiPressButton pressButton;
         [SerializeField] private TMP_Text label;
+        [SerializeField] private UiToggleStateIcon stateIcon;
 
         public UiPressButton PressButton
         {
@@ -19,6 +20,19 @@ namespace Project.Scripts.UI
                 }
 
                 return pressButton;
+            }
+        }
+
+        public UiToggleStateIcon StateIcon
+        {
+            get
+            {
+                if (stateIcon == null)
+                {
+                    stateIcon = GetComponentInChildren<UiToggleStateIcon>(true);
+                }
+
+                return stateIcon;
             }
         }
 
@@ -45,6 +59,11 @@ namespace Project.Scripts.UI
             if (label == null)
             {
                 label = GetComponentInChildren<TMP_Text>(true);
+            }
+
+            if (stateIcon == null)
+            {
+                stateIcon = GetComponentInChildren<UiToggleStateIcon>(true);
             }
         }
     }

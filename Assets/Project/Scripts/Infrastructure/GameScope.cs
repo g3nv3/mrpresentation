@@ -24,10 +24,10 @@ namespace Project.Scripts
         [SerializeField] private SpatialMeshYandexBuildingProbe spatialMeshYandexBuildingProbe;
         [Tooltip("Менеджер UI-окон, регистрируется как IUiWindowManager.")]
         [SerializeField] private UiWindowManager uiWindowManager;
-        [Tooltip("Prefab runtime-кнопки для UiGeneratedButtonSource.")]
-        [SerializeField] private GameObject generatedUiButtonPrefab;
         [Tooltip("Presenter, в который runtime-кнопки пробрасывают действие BuildPathTo.")]
         [SerializeField] private NavMeshPathPresenter navMeshPathPresenter;
+        [Tooltip("Scene toggle components, registered as IUiToggleState by UiToggleId key.")]
+        [SerializeField] private UiToggleRegistration[] uiToggles;
         [SerializeField] private bool createManualQrAnchors = true;
         [SerializeField] private GameObject qrBtnPrefab;
         protected override void Configure(IContainerBuilder builder)
@@ -107,15 +107,16 @@ namespace Project.Scripts
                     .As<ISpatialMeshYandexBuildingProbe>();
             }
 
-            builder.RegisterInstance(new UiGeneratedButtonOptions(
-                generatedUiButtonPrefab,
-                navMeshPathPresenter));
+            builder.RegisterInstance(new UiGeneratedButtonOptions(navMeshPathPresenter));
 
+            RegisterUiToggles(builder);
 
             builder.RegisterComponent(uiWindowManager)
                 .As<IUiWindowManager>();
             builder.Register<UiGeneratedButtonSpawner>(Lifetime.Singleton)
                 .As<IUiGeneratedButtonSpawner>();
+            builder.Register<UiSelectedTargetState>(Lifetime.Singleton)
+                .As<IUiSelectedTargetState>();
 
 
             builder.RegisterComponent(navMeshPathPresenter);
@@ -126,6 +127,35 @@ namespace Project.Scripts
             }
 
             builder.Register<PicoQrCodeReader>(Lifetime.Singleton);
+        }
+
+        private void RegisterUiToggles(IContainerBuilder builder)
+        {
+            if (uiToggles == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < uiToggles.Length; i++)
+            {
+                var registration = uiToggles[i];
+                if (registration == null || registration.TargetObject == null)
+                {
+                    continue;
+                }
+
+                if (!registration.TryGetState(out var state))
+                {
+                    var stateCount = registration.GetStateCount();
+                    Debug.LogError(
+                        $"{registration.TargetObject.name} must have exactly one component implementing {nameof(IUiToggleState)} to be registered as '{registration.Id}'. Found: {stateCount}.",
+                        registration.TargetObject);
+                    continue;
+                }
+
+                builder.RegisterInstance(state)
+                    .Keyed(registration.Id);
+            }
         }
     }
 }

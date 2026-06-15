@@ -12,16 +12,19 @@ namespace Project.Scripts.UI
     {
         private readonly IObjectResolver objectResolver;
         private readonly IUiWindowManager windowManager;
+        private readonly IUiSelectedTargetState selectedTargetState;
         private readonly UiGeneratedButtonOptions options;
         private readonly Dictionary<UiGeneratedButtonSource, List<GameObject>> buttonsBySource = new();
 
         public UiGeneratedButtonSpawner(
             IObjectResolver objectResolver,
             IUiWindowManager windowManager,
+            IUiSelectedTargetState selectedTargetState,
             UiGeneratedButtonOptions options)
         {
             this.objectResolver = objectResolver;
             this.windowManager = windowManager;
+            this.selectedTargetState = selectedTargetState;
             this.options = options;
         }
 
@@ -33,12 +36,6 @@ namespace Project.Scripts.UI
             }
 
             Clear(source);
-
-            if (options.ButtonPrefab == null)
-            {
-                Debug.LogError("Generated UI button prefab is not assigned.");
-                return;
-            }
 
             if (!windowManager.TryGetGeneratedButtonParent(source.Window, out var parent))
             {
@@ -55,7 +52,13 @@ namespace Project.Scripts.UI
                     continue;
                 }
 
-                var button = objectResolver.Instantiate(options.ButtonPrefab, parent, false);
+                if (definition.ButtonPrefab == null)
+                {
+                    Debug.LogError($"Generated UI button prefab is not assigned for '{definition.ButtonName}'.", source);
+                    continue;
+                }
+
+                var button = objectResolver.Instantiate(definition.ButtonPrefab, parent, false);
                 ConfigureButton(button, definition);
                 createdButtons.Add(button);
             }
@@ -94,8 +97,22 @@ namespace Project.Scripts.UI
             if (buttonObject.TryGetComponent<UiGeneratedButtonView>(out var view))
             {
                 view.SetLabel(labelText);
+                BindSelectionIcon(view.StateIcon, definition.Target);
                 BindPress(view.PressButton, buttonObject, definition);
+                return;
             }
+
+            Debug.LogError("Generated UI button prefab has no UiGeneratedButtonView component.", buttonObject);
+        }
+
+        private void BindSelectionIcon(UiToggleStateIcon stateIcon, GameObject target)
+        {
+            if (stateIcon == null || target == null)
+            {
+                return;
+            }
+
+            stateIcon.Bind(new UiSelectedTargetToggleState(selectedTargetState, target));
         }
 
         private void BindPress(UiPressButton button, Object context, UiGeneratedButtonTarget definition)
@@ -136,6 +153,15 @@ namespace Project.Scripts.UI
             }
 
             options.NavMeshPathPresenter.BuildPathTo(target.transform);
+
+            if (options.NavMeshPathPresenter.IsActive &&
+                options.NavMeshPathPresenter.CurrentTarget == target.transform)
+            {
+                selectedTargetState?.Select(target);
+                return;
+            }
+
+            selectedTargetState?.Clear(target);
         }
     }
 }

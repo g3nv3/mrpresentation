@@ -2,13 +2,14 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Project.Scripts.UI;
 using TMPro;
 using Unity.XR.PXR;
 using UnityEngine;
 using UnityEngine.Android;
 using UnityEngine.UI;
 
-public sealed class PicoCameraRenderTextureSource : MonoBehaviour
+public sealed class PicoCameraRenderTextureSource : MonoBehaviour, IUiToggleState
 {
     private enum ResolutionSelectionMode
     {
@@ -44,6 +45,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     private bool isInitialized;
     private bool isInitializing;
     private bool isWaitingForPermission;
+    private bool hasStarted;
     private bool captureStarted;
     private bool hasLoggedAcquireFailure;
     private PxrResult lastAcquireResult = PxrResult.Unknown;
@@ -67,6 +69,8 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     public PxrResult LastAcquireResult => lastAcquireResult;
     public string LastDecodedQrText => lastDecodedQrText;
     public bool IsQrScannerEnabled => enableQrDetection;
+    public bool IsOn => IsQrScannerEnabled;
+    public event Action<bool> Changed;
 
     [VContainer.Inject]
     public void Construct(PicoQrCodeReader injectedQrCodeReader, IQrMarkerPlacementService injectedQrMarkerPlacementService)
@@ -86,6 +90,16 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         {
             decodedQrTextLabel.text = enableQrDetection ? "No QR detected" : string.Empty;
         }
+
+        if (hasStarted && autoStartOnEnable)
+        {
+            _ = InitializeAsync();
+        }
+    }
+
+    private void Start()
+    {
+        hasStarted = true;
 
         if (autoStartOnEnable)
         {
@@ -142,12 +156,13 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
             {
                 if (qrCodeReader == null)
                 {
-                    LogError("QR reader dependency is not configured.");
-                    return;
+                    LogVerbose("QR reader dependency is not configured yet. Camera feed will start without QR scanning.");
                 }
-
-                qrCodeReader.ScanIntervalSeconds = qrScanIntervalSeconds;
-                LogVerbose($"QR reader ready. Interval={qrScanIntervalSeconds:0.###}s");
+                else
+                {
+                    qrCodeReader.ScanIntervalSeconds = qrScanIntervalSeconds;
+                    LogVerbose($"QR reader ready. Interval={qrScanIntervalSeconds:0.###}s");
+                }
             }
 
             if (!TryResolveSupportedConfiguration(out activeCameraId, out activeResolution, out activeFps))
@@ -228,8 +243,19 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         SetQrScannerActive(!enableQrDetection);
     }
 
+    public void Toggle()
+    {
+        ToggleQrScanner();
+    }
+
+    public void SetOn(bool value)
+    {
+        SetQrScannerActive(value);
+    }
+
     public void StartQrScanner()
     {
+        var wasEnabled = enableQrDetection;
         enableQrDetection = true;
 
         if (qrCodeReader != null)
@@ -244,13 +270,16 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         {
             _ = InitializeAsync();
         }
+
+        NotifyQrScannerChanged(wasEnabled);
     }
 
     public void StopQrScanner()
     {
+        var wasEnabled = enableQrDetection;
         enableQrDetection = false;
         ResetQrDetectionState(string.Empty);
-        Shutdown();
+        NotifyQrScannerChanged(wasEnabled);
     }
 
     public void Shutdown()
@@ -606,6 +635,14 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         if (decodedQrTextLabel != null)
         {
             decodedQrTextLabel.text = labelText;
+        }
+    }
+
+    private void NotifyQrScannerChanged(bool previousValue)
+    {
+        if (previousValue != enableQrDetection)
+        {
+            Changed?.Invoke(enableQrDetection);
         }
     }
 

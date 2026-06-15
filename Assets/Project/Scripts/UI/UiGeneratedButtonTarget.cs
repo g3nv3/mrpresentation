@@ -7,6 +7,7 @@ namespace Project.Scripts.UI
     public sealed class UiGeneratedButtonTarget
     {
         [SerializeField] private string buttonName;
+        [SerializeField] private GameObject buttonPrefab;
         [SerializeField] private GameObject target;
         [SerializeField] private UiGeneratedButtonAction action = UiGeneratedButtonAction.BuildNavMeshPathTo;
 
@@ -14,6 +15,7 @@ namespace Project.Scripts.UI
             ? target != null ? target.name : string.Empty
             : buttonName;
 
+        public GameObject ButtonPrefab => buttonPrefab;
         public GameObject Target => target;
         public UiGeneratedButtonAction Action => action;
     }

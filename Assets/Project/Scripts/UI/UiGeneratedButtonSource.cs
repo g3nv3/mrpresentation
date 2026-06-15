@@ -9,7 +9,6 @@ namespace Project.Scripts.UI
     {
         [SerializeField] private UiGeneratedButtonWindow window = UiGeneratedButtonWindow.NavMesh;
         [SerializeField] private bool rebuildOnStart = true;
-        [SerializeField] private bool clearOnDisable = true;
         [SerializeField] private List<UiGeneratedButtonTarget> buttons = new();
 
         private IUiGeneratedButtonSpawner buttonSpawner;
@@ -44,12 +43,9 @@ namespace Project.Scripts.UI
             RebuildButtons();
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
-            if (clearOnDisable)
-            {
-                buttonSpawner?.Clear(this);
-            }
+            buttonSpawner?.Clear(this);
         }
 
         public void RebuildButtons()
