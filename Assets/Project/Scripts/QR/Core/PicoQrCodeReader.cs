@@ -38,6 +38,12 @@ public sealed class PicoQrCodeReader
         };
     }
 
+    public void ResetScanSchedule()
+    {
+        nextScanTime = 0f;
+        lastDecodeAttempted = false;
+    }
+
     public bool TryDecode(
         IntPtr bufferPtr,
         int width,

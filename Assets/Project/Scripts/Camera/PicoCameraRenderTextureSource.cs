@@ -66,6 +66,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
     public bool IsInitialized => isInitialized;
     public PxrResult LastAcquireResult => lastAcquireResult;
     public string LastDecodedQrText => lastDecodedQrText;
+    public bool IsQrScannerEnabled => enableQrDetection;
 
     [VContainer.Inject]
     public void Construct(PicoQrCodeReader injectedQrCodeReader, IQrMarkerPlacementService injectedQrMarkerPlacementService)
@@ -210,6 +211,48 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         }
     }
 
+    public void SetQrScannerActive(bool isActive)
+    {
+        if (isActive)
+        {
+            StartQrScanner();
+        }
+        else
+        {
+            StopQrScanner();
+        }
+    }
+
+    public void ToggleQrScanner()
+    {
+        SetQrScannerActive(!enableQrDetection);
+    }
+
+    public void StartQrScanner()
+    {
+        enableQrDetection = true;
+
+        if (qrCodeReader != null)
+        {
+            qrCodeReader.ScanIntervalSeconds = qrScanIntervalSeconds;
+            qrCodeReader.ResetScanSchedule();
+        }
+
+        ResetQrDetectionState("No QR detected");
+
+        if (isActiveAndEnabled)
+        {
+            _ = InitializeAsync();
+        }
+    }
+
+    public void StopQrScanner()
+    {
+        enableQrDetection = false;
+        ResetQrDetectionState(string.Empty);
+        Shutdown();
+    }
+
     public void Shutdown()
     {
         initializationCts?.Cancel();
@@ -236,15 +279,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         CleanupSessionAndDevice();
         textureRenderer?.Dispose();
         textureRenderer = null;
-        nextQrMissLogTime = 0f;
-        lastSuccessfulQrDetectionTime = float.NegativeInfinity;
-        lastDecodedQrText = null;
-        qrMarkerPlacementService?.ClearCurrentDetection();
-
-        if (decodedQrTextLabel != null)
-        {
-            decodedQrTextLabel.text = string.Empty;
-        }
+        ResetQrDetectionState(string.Empty);
     }
 
     private bool TryResolveSupportedConfiguration(
@@ -492,7 +527,7 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
 
     private void ProcessQrFrame(in PicoCameraFrame frame)
     {
-        if (qrCodeReader == null)
+        if (!enableQrDetection || qrCodeReader == null)
         {
             return;
         }
@@ -557,6 +592,20 @@ public sealed class PicoCameraRenderTextureSource : MonoBehaviour
         {
             nextQrMissLogTime = Time.unscaledTime + 1f;
             LogVerbose("QR decode attempt: no result.");
+        }
+    }
+
+    private void ResetQrDetectionState(string labelText)
+    {
+        nextQrMissLogTime = 0f;
+        lastSuccessfulQrDetectionTime = float.NegativeInfinity;
+        lastDecodedQrText = null;
+        qrCodeReader?.ResetScanSchedule();
+        qrMarkerPlacementService?.ClearCurrentDetection();
+
+        if (decodedQrTextLabel != null)
+        {
+            decodedQrTextLabel.text = labelText;
         }
     }
 
