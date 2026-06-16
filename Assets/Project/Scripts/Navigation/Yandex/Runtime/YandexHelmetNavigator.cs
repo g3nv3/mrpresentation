@@ -28,6 +28,7 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     private GeoCoordinate? _currentCoordinate;
 
     public event Action<YandexRouteResult> RouteRequestCompleted;
+    public event Action RouteDisabled;
 
     public GeoCoordinate? CurrentCoordinate => _currentCoordinate;
     public bool IsRouteVisible => routePresenter != null && routePresenter.IsVisible;
@@ -151,6 +152,8 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
         {
             routePresenter.DisableRoute();
         }
+
+        RouteDisabled?.Invoke();
     }
 
     private void CancelActiveRequest()
