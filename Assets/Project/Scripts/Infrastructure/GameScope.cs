@@ -30,6 +30,7 @@ namespace Project.Scripts
         [SerializeField] private UiToggleRegistration[] uiToggles;
         [SerializeField] private bool createManualQrAnchors = true;
         [SerializeField] private GameObject qrBtnPrefab;
+        [SerializeField] private QrMarkerInstallNotificationPanel qrMarkerInstallNotificationPanel;
         protected override void Configure(IContainerBuilder builder)
         {
             if (picoHandInput != null)
@@ -68,6 +69,7 @@ namespace Project.Scripts
 
             builder.RegisterInstance(new QrManualAnchorOptions(createManualQrAnchors));
             builder.RegisterInstance(new QrManualAnchorVisualOptions(qrBtnPrefab));
+            builder.RegisterInstance(new QrMarkerInstallNotificationOptions(qrMarkerInstallNotificationPanel));
 
             if (hasQrPlacementDependencies)
             {

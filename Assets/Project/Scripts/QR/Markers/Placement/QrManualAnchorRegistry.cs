@@ -130,7 +130,7 @@ public sealed class QrManualAnchorRegistry : IDisposable
         if (markerRegistry != null &&
             markerRegistry.TryGet(markerId, out var definition) &&
             definition != null &&
-            definition.MarkerSpawnMode == QrMarkerDefinition.SpawnMode.DirectObject)
+            definition.SpawnsDirectObject)
         {
             return qrFactory.TryCreateMarker(markerId, pose, out var objectInstance)
                 ? objectInstance

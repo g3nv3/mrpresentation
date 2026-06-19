@@ -8,7 +8,8 @@ public sealed class QrMarkerDefinition
     public enum SpawnMode
     {
         Button = 0,
-        DirectObject = 1
+        DirectObject = 1,
+        DirectObjectWithInstallNotification = 2
     }
 
     [SerializeField] private string markerId;
@@ -23,6 +24,11 @@ public sealed class QrMarkerDefinition
     public string MarkerId => markerId;
     public GameObject Prefab => prefab;
     public SpawnMode MarkerSpawnMode => spawnMode;
+    public bool SpawnsDirectObject =>
+        spawnMode == SpawnMode.DirectObject ||
+        spawnMode == SpawnMode.DirectObjectWithInstallNotification;
+    public bool ShowsInstallNotification =>
+        spawnMode == SpawnMode.DirectObjectWithInstallNotification;
     public Vector3 PositionOffset => positionOffset;
     public Vector3 RotationOffset => rotationOffset;
     public float QrCodeSizeMeters => qrCodeSizeMeters;

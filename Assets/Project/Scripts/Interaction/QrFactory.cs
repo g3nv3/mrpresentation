@@ -12,16 +12,19 @@ namespace Project.Scripts.Interaction
     {
         private readonly IObjectResolver objectResolver;
         private readonly IQrMarkerRegistry markerRegistry;
+        private readonly QrMarkerInstallNotificationOptions installNotificationOptions;
 
         private readonly Dictionary<string, GameObject> spawnedByMarkerId =
             new Dictionary<string, GameObject>(StringComparer.Ordinal);
 
         public QrFactory(
             IObjectResolver objectResolver,
-            IQrMarkerRegistry markerRegistry)
+            IQrMarkerRegistry markerRegistry,
+            QrMarkerInstallNotificationOptions installNotificationOptions)
         {
             this.objectResolver = objectResolver;
             this.markerRegistry = markerRegistry;
+            this.installNotificationOptions = installNotificationOptions;
         }
 
         public bool TryCreateMarker(string markerId, in Pose pose, out GameObject instance)
@@ -42,6 +45,11 @@ namespace Project.Scripts.Interaction
             instance = objectResolver.Instantiate(definition.Prefab, position, rotation);
 
             spawnedByMarkerId[markerId] = instance;
+            if (instance != null && definition.ShowsInstallNotification)
+            {
+                installNotificationOptions?.Panel?.ShowInstalled(pose, markerId);
+            }
+
             return instance != null;
         }
 
