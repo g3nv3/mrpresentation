@@ -12,17 +12,17 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     [SerializeField] private Vector3 routeOffset = new Vector3(0f, -0.35f, 1.2f);
 
     [Tooltip("Пересчитывает точки линии каждый LateUpdate, чтобы маршрут следовал за игроком.")]
-    [SerializeField] private bool followPlayerTransform = true;
+    [SerializeField] private bool followPlayerTransform;
 
     [Tooltip("Поворачивает маршрут вместе с трансформом игрока.")]
-    [SerializeField] private bool rotateWithPlayer = true;
+    [SerializeField] private bool rotateWithPlayer;
 
     [Tooltip("Использует только поворот игрока по Y, чтобы линия оставалась горизонтальной.")]
     [SerializeField] private bool yawOnlyRotation = true;
 
     [Header("Route Projection")]
-    [Tooltip("Масштаб перевода реальных метров маршрута в Unity units для отображения в шлеме.")]
-    [SerializeField, Min(0.001f)] private float metersToUnityScale = 0.03f;
+    [Tooltip("Масштаб перевода реальных метров маршрута в Unity units. При стандартном масштабе Unity 1 unit = 1 meter.")]
+    [SerializeField, Min(0.001f)] private float metersToUnityScale = 1f;
 
     [Tooltip("Максимальное количество точек маршрута, передаваемых в отображение.")]
     [SerializeField, Min(2)] private int maxRenderedPoints = 256;
@@ -30,6 +30,12 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     [Header("Rendering")]
     [Tooltip("Компонент, который отображает рассчитанные точки маршрута.")]
     [SerializeField] private RoutePathView pathView;
+
+    [Tooltip("Разрешает RoutePathView применять свой Point Projector. Для Yandex-маршрута обычно выключено, чтобы линия оставалась на заданной высоте, а не ложилась на MRMesh.")]
+    [SerializeField] private bool usePathViewPointProjector;
+
+    [Tooltip("Разрешает RoutePathView применять свой Point Offset. Для Yandex-маршрута обычно выключено, чтобы общий offset NavMesh-линии не поднимал маршрут к голове.")]
+    [SerializeField] private bool usePathViewPointOffset;
 
     private readonly List<Vector3> _localRoutePoints = new List<Vector3>();
     private readonly List<Vector3> _worldRoutePoints = new List<Vector3>();
@@ -204,11 +210,16 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
             _worldRoutePoints.Add(origin + rotation * _localRoutePoints[i]);
         }
 
-        return pathView.Show(_worldRoutePoints);
+        return pathView.Show(_worldRoutePoints, usePathViewPointProjector, usePathViewPointOffset);
     }
 
     private Vector3 GetRouteOrigin(Transform anchor, Quaternion rotation)
     {
+        if (!rotateWithPlayer)
+        {
+            return anchor.position + routeOffset;
+        }
+
         if (rotateWithPlayer && yawOnlyRotation)
         {
             return anchor.position + rotation * routeOffset;

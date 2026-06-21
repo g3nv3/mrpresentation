@@ -10,6 +10,7 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
 
     [Header("Behavior")]
     [SerializeField] private bool applyEveryReceivedLocation = true;
+    [SerializeField] private bool rebuildVisibleRouteOnLocation = true;
 
     public PhoneLocationSample? LatestAppliedSample { get; private set; }
 
@@ -61,6 +62,12 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
 
         navigator.SetCurrentCoordinate(new GeoCoordinate(sample.Latitude, sample.Longitude));
         LatestAppliedSample = sample;
+
+        if (rebuildVisibleRouteOnLocation && navigator.IsRouteVisible)
+        {
+            navigator.TryRebuildRouteFromCurrentCoordinate();
+        }
+
         return true;
     }
 

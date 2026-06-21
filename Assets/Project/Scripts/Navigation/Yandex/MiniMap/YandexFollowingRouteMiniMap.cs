@@ -1,8 +1,10 @@
+using System;
 using System.Net;
+using Project.Scripts.UI;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public sealed class YandexFollowingRouteMiniMap : MonoBehaviour
+public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
 {
     [Header("Dependencies")]
     [SerializeField] private PhoneLocationUdpReceiver locationReceiver;
@@ -35,11 +37,16 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour
     private float _targetHeadingDegrees;
 
     public bool IsMapVisible => _isMapVisible;
+    public bool IsOn => _isMapVisible;
     public bool HasCenter => _hasCenter;
     public bool HasRoute => _route != null;
+    public event Action<bool> Changed;
 
     private void Awake()
     {
+        
+        SetMapVisible(visibleOnEnable);
+
         if (locationReceiver == null)
         {
             locationReceiver = GetComponent<PhoneLocationUdpReceiver>();
@@ -73,8 +80,6 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour
 
     private void OnEnable()
     {
-        SetMapVisible(visibleOnEnable);
-
         if (locationReceiver != null)
         {
             locationReceiver.LocationReceived += OnLocationReceived;
@@ -160,8 +165,19 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour
         SetMapVisible(!_isMapVisible);
     }
 
+    public void SetOn(bool value)
+    {
+        SetMapVisible(value);
+    }
+
+    public void Toggle()
+    {
+        ToggleMap();
+    }
+
     public void SetMapVisible(bool visible)
     {
+        var stateChanged = _isMapVisible != visible;
         _isMapVisible = visible;
 
         if (mapCanvasGroup != null)
@@ -178,6 +194,11 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour
         if (visible)
         {
             RefreshAll();
+        }
+
+        if (stateChanged)
+        {
+            Changed?.Invoke(visible);
         }
     }
 

@@ -36,6 +36,16 @@ public sealed class RouteLineRendererView : MonoBehaviour
 
     public bool Show(IReadOnlyList<Vector3> points)
     {
+        return Show(points, true);
+    }
+
+    public bool Show(IReadOnlyList<Vector3> points, bool usePointProjector)
+    {
+        return Show(points, usePointProjector, true);
+    }
+
+    public bool Show(IReadOnlyList<Vector3> points, bool usePointProjector, bool usePointOffset)
+    {
         EnsureRenderer();
 
         if (lineRenderer == null || points == null || points.Count < 2)
@@ -47,7 +57,7 @@ public sealed class RouteLineRendererView : MonoBehaviour
         lineRenderer.positionCount = points.Count;
         for (var i = 0; i < points.Count; i++)
         {
-            lineRenderer.SetPosition(i, GetRenderPoint(points[i]));
+            lineRenderer.SetPosition(i, GetRenderPoint(points[i], usePointProjector, usePointOffset));
         }
 
         lineRenderer.enabled = true;
@@ -75,15 +85,16 @@ public sealed class RouteLineRendererView : MonoBehaviour
         pointOffset = offset;
     }
 
-    private Vector3 GetRenderPoint(Vector3 sourcePoint)
+    private Vector3 GetRenderPoint(Vector3 sourcePoint, bool usePointProjector, bool usePointOffset)
     {
+        var offset = usePointOffset ? pointOffset : Vector3.zero;
         var projector = Projector;
-        if (projector != null && projector.TryProjectPoint(sourcePoint, out var projectedPoint))
+        if (usePointProjector && projector != null && projector.TryProjectPoint(sourcePoint, out var projectedPoint))
         {
-            return projectedPoint + pointOffset;
+            return projectedPoint + offset;
         }
 
-        return sourcePoint + pointOffset;
+        return sourcePoint + offset;
     }
 
     public void EnsureRenderer()

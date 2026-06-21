@@ -21,6 +21,7 @@ Navigation/
 │   └── RoutePathView.cs
 └── Yandex/
     ├── Api/
+    │   ├── OpenRouteServiceClient.cs
     │   ├── YandexGeocoderClient.cs
     │   └── YandexMapsRouteClient.cs
     ├── Presentation/
@@ -56,6 +57,9 @@ Navigation/
 
 `Yandex/Api/YandexMapsRouteClient.cs`
 : низкоуровневый клиент Yandex Route API. Собирает URL запроса маршрута, отправляет `UnityWebRequest`, парсит `legs[].steps[].polyline.points` и возвращает `YandexRouteResult`.
+
+`Yandex/Api/OpenRouteServiceClient.cs`
+: альтернативный клиент маршрутов OpenRouteService. Отправляет POST-запрос Directions v2, разбирает GeoJSON и возвращает тот же `YandexRouteResult`, поэтому работает с существующими navigator, presenter и UI. При назначении обоих клиентов `YandexHelmetNavigator` использует OpenRouteService.
 
 `Yandex/Api/YandexGeocoderClient.cs`
 : низкоуровневый клиент Yandex Geocoder API. Делает reverse geocode по координате, запрашивает `kind=house` и возвращает адресные данные через `YandexReverseGeocodeResult`.

@@ -21,17 +21,27 @@ public sealed class RouteEndpointMarkerView : MonoBehaviour
 
     public void Show(Vector3 endpointPosition)
     {
+        Show(endpointPosition, true);
+    }
+
+    public void Show(Vector3 endpointPosition, bool usePointProjector)
+    {
+        Show(endpointPosition, usePointProjector, true);
+    }
+
+    public void Show(Vector3 endpointPosition, bool usePointProjector, bool useMarkerOffset)
+    {
         if (markerObject == null)
         {
             return;
         }
 
         var projector = Projector;
-        var point = projector != null && projector.TryProjectPoint(endpointPosition, out var projectedPoint)
+        var point = usePointProjector && projector != null && projector.TryProjectPoint(endpointPosition, out var projectedPoint)
             ? projectedPoint
             : endpointPosition;
 
-        markerObject.transform.position = point + markerOffset;
+        markerObject.transform.position = point + (useMarkerOffset ? markerOffset : Vector3.zero);
         markerObject.SetActive(true);
     }
 

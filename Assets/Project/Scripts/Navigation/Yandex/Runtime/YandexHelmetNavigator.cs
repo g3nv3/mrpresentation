@@ -8,6 +8,9 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     [Tooltip("Клиент, который запрашивает маршруты через Yandex Route API.")]
     [SerializeField] private YandexMapsRouteClient routeClient;
 
+    [Tooltip("OpenRouteService client. When assigned, it is used instead of YandexMapsRouteClient.")]
+    [SerializeField] private OpenRouteServiceClient openRouteServiceClient;
+
     [Tooltip("Presenter, который рисует полученный маршрут в пространстве шлема.")]
     [SerializeField] private YandexHelmetRoutePresenter routePresenter;
 
@@ -26,18 +29,29 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
 
     private Coroutine _activeRequest;
     private GeoCoordinate? _currentCoordinate;
+    private GeoCoordinate? _currentDestination;
 
     public event Action<YandexRouteResult> RouteRequestCompleted;
     public event Action RouteDisabled;
 
     public GeoCoordinate? CurrentCoordinate => _currentCoordinate;
+    public GeoCoordinate? CurrentDestination => _currentDestination;
     public bool IsRouteVisible => routePresenter != null && routePresenter.IsVisible;
+    private IYandexRouteClient ActiveRouteClient => openRouteServiceClient != null ? openRouteServiceClient : routeClient;
+    private YandexRouteTravelMode ActiveDefaultMode => openRouteServiceClient != null
+        ? openRouteServiceClient.DefaultMode
+        : routeClient != null ? routeClient.DefaultMode : YandexRouteTravelMode.Walking;
 
     private void Awake()
     {
         if (routeClient == null)
         {
             routeClient = GetComponent<YandexMapsRouteClient>();
+        }
+
+        if (openRouteServiceClient == null)
+        {
+            openRouteServiceClient = GetComponent<OpenRouteServiceClient>();
         }
 
         if (routePresenter == null)
@@ -62,6 +76,13 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     public void SetDependencies(YandexMapsRouteClient client, YandexHelmetRoutePresenter presenter)
     {
         routeClient = client;
+        openRouteServiceClient = null;
+        routePresenter = presenter;
+    }
+
+    public void SetDependencies(OpenRouteServiceClient client, YandexHelmetRoutePresenter presenter)
+    {
+        openRouteServiceClient = client;
         routePresenter = presenter;
     }
 
@@ -85,7 +106,8 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     public Coroutine ShowRoute(GeoCoordinate start, GeoCoordinate finish, Action<YandexRouteResult> completed = null)
     {
         _currentCoordinate = start;
-        return RequestAndShowRoute(new YandexRouteRequest(start, finish, routeClient != null ? routeClient.DefaultMode : YandexRouteTravelMode.Walking), completed);
+        _currentDestination = finish;
+        return RequestAndShowRoute(new YandexRouteRequest(start, finish, ActiveDefaultMode), completed);
     }
 
     public Coroutine ShowRouteTo(GeoCoordinate finish, Action<YandexRouteResult> completed = null)
@@ -104,11 +126,23 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
         return ShowRouteTo(finish, completed);
     }
 
+    public bool TryRebuildRouteFromCurrentCoordinate(Action<YandexRouteResult> completed = null)
+    {
+        if (!_currentDestination.HasValue)
+        {
+            return false;
+        }
+
+        ShowRouteTo(_currentDestination.Value, completed);
+        return true;
+    }
+
     public Coroutine RequestAndShowRoute(YandexRouteRequest request, Action<YandexRouteResult> completed = null)
     {
-        if (routeClient == null)
+        var activeRouteClient = ActiveRouteClient;
+        if (activeRouteClient == null)
         {
-            CompleteWithFailure("Yandex route client is not assigned.", completed);
+            CompleteWithFailure("Route client is not assigned.", completed);
             return null;
         }
 
@@ -119,7 +153,7 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
         }
 
         CancelActiveRequest();
-        _activeRequest = routeClient.RequestRoute(request, result =>
+        _activeRequest = activeRouteClient.RequestRoute(request, result =>
         {
             _activeRequest = null;
 
@@ -153,6 +187,7 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
             routePresenter.DisableRoute();
         }
 
+        _currentDestination = null;
         RouteDisabled?.Invoke();
     }
 

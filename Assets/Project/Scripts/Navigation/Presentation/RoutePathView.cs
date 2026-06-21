@@ -40,6 +40,16 @@ public sealed class RoutePathView : MonoBehaviour
 
     public bool Show(IReadOnlyList<Vector3> points)
     {
+        return Show(points, true);
+    }
+
+    public bool Show(IReadOnlyList<Vector3> points, bool usePointProjector)
+    {
+        return Show(points, usePointProjector, true);
+    }
+
+    public bool Show(IReadOnlyList<Vector3> points, bool usePointProjector, bool usePointOffset)
+    {
         EnsureDependencies();
 
         if (points == null || points.Count < 2)
@@ -48,7 +58,7 @@ public sealed class RoutePathView : MonoBehaviour
             return false;
         }
 
-        if (pathLine == null || !pathLine.Show(points))
+        if (pathLine == null || !pathLine.Show(points, usePointProjector, usePointOffset))
         {
             Hide();
             return false;
@@ -56,12 +66,12 @@ public sealed class RoutePathView : MonoBehaviour
 
         if (floorShadowLine != null)
         {
-            floorShadowLine.Show(points);
+            floorShadowLine.Show(points, usePointProjector, usePointOffset);
         }
 
         if (endpointMarker != null)
         {
-            endpointMarker.Show(points[points.Count - 1]);
+            endpointMarker.Show(points[points.Count - 1], usePointProjector, usePointOffset);
         }
 
         return true;

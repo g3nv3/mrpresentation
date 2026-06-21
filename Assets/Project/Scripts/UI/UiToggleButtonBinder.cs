@@ -9,7 +9,9 @@ namespace Project.Scripts.UI
     public sealed class UiToggleButtonBinder : MonoBehaviour
     {
         [SerializeField] private UiToggleId toggleId;
+        [SerializeField] private UiPressButton pressButton;
         [SerializeField] private UiToggleStateIcon stateIcon;
+        [SerializeField] private bool toggleOnPress = true;
 
         private IObjectResolver resolver;
         private IUiToggleState state;
@@ -33,11 +35,21 @@ namespace Project.Scripts.UI
         private void OnEnable()
         {
             EnsureReferences();
+            if (pressButton != null)
+            {
+                pressButton.OnPressed.AddListener(HandlePressed);
+            }
+
             Bind();
         }
 
         private void OnDisable()
         {
+            if (pressButton != null)
+            {
+                pressButton.OnPressed.RemoveListener(HandlePressed);
+            }
+
             Unbind();
         }
 
@@ -86,9 +98,22 @@ namespace Project.Scripts.UI
 
         private void EnsureReferences()
         {
+            if (pressButton == null)
+            {
+                pressButton = GetComponentInChildren<UiPressButton>(true);
+            }
+
             if (stateIcon == null)
             {
                 stateIcon = GetComponentInChildren<UiToggleStateIcon>(true);
+            }
+        }
+
+        private void HandlePressed()
+        {
+            if (toggleOnPress)
+            {
+                state?.Toggle();
             }
         }
     }

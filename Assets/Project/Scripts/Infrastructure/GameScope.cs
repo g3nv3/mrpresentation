@@ -14,6 +14,8 @@ namespace Project.Scripts
         [SerializeField] private QrCameraRayPoseResolver qrCameraRayPoseResolver;
         [Tooltip("Необязательный клиент Yandex Route API, регистрируется как IYandexRouteClient.")]
         [SerializeField] private YandexMapsRouteClient yandexMapsRouteClient;
+        [Tooltip("OpenRouteService client. When assigned, it is registered as IYandexRouteClient instead of Yandex Route API.")]
+        [SerializeField] private OpenRouteServiceClient openRouteServiceClient;
         [Tooltip("Необязательный клиент Yandex Geocoder API, регистрируется как IYandexGeocoderClient.")]
         [SerializeField] private YandexGeocoderClient yandexGeocoderClient;
         [Tooltip("Необязательный presenter маршрута в шлеме, регистрируется как IYandexRoutePresenter.")]
@@ -79,7 +81,12 @@ namespace Project.Scripts
                     .As<IQrMarkerPlacementService>();
             }
 
-            if (yandexMapsRouteClient != null)
+            if (openRouteServiceClient != null)
+            {
+                builder.RegisterComponent(openRouteServiceClient)
+                    .As<IYandexRouteClient>();
+            }
+            else if (yandexMapsRouteClient != null)
             {
                 builder.RegisterComponent(yandexMapsRouteClient)
                     .As<IYandexRouteClient>();
