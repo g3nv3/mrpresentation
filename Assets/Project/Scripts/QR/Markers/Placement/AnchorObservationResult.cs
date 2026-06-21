@@ -17,6 +17,7 @@ public readonly struct AnchorObservationResult
     public readonly Pose Pose;
     public readonly float MaxPositionSpreadMeters;
     public readonly float MaxRotationSpreadDegrees;
+    public readonly float NormalizedProgress;
 
     private AnchorObservationResult(
         ObservationState state,
@@ -24,7 +25,8 @@ public readonly struct AnchorObservationResult
         int requiredSampleCount,
         in Pose pose,
         float maxPositionSpreadMeters,
-        float maxRotationSpreadDegrees)
+        float maxRotationSpreadDegrees,
+        float normalizedProgress)
     {
         State = state;
         SampleCount = sampleCount;
@@ -32,10 +34,11 @@ public readonly struct AnchorObservationResult
         Pose = pose;
         MaxPositionSpreadMeters = maxPositionSpreadMeters;
         MaxRotationSpreadDegrees = maxRotationSpreadDegrees;
+        NormalizedProgress = Mathf.Clamp01(normalizedProgress);
     }
 
     public static AnchorObservationResult Invalid =>
-        new AnchorObservationResult(ObservationState.Invalid, 0, 0, default, 0f, 0f);
+        new AnchorObservationResult(ObservationState.Invalid, 0, 0, default, 0f, 0f, 0f);
 
     public static AnchorObservationResult Collecting(
         int sampleCount,
@@ -50,7 +53,8 @@ public readonly struct AnchorObservationResult
             requiredSampleCount,
             pose,
             maxPositionSpreadMeters,
-            maxRotationSpreadDegrees);
+            maxRotationSpreadDegrees,
+            GetSampleProgress(sampleCount, requiredSampleCount));
     }
 
     public static AnchorObservationResult Unstable(
@@ -58,7 +62,8 @@ public readonly struct AnchorObservationResult
         int requiredSampleCount,
         in Pose pose,
         float maxPositionSpreadMeters,
-        float maxRotationSpreadDegrees)
+        float maxRotationSpreadDegrees,
+        float normalizedProgress)
     {
         return new AnchorObservationResult(
             ObservationState.Unstable,
@@ -66,7 +71,8 @@ public readonly struct AnchorObservationResult
             requiredSampleCount,
             pose,
             maxPositionSpreadMeters,
-            maxRotationSpreadDegrees);
+            maxRotationSpreadDegrees,
+            normalizedProgress);
     }
 
     public static AnchorObservationResult Created(
@@ -81,7 +87,8 @@ public readonly struct AnchorObservationResult
             requiredSampleCount,
             pose,
             maxPositionSpreadMeters,
-            maxRotationSpreadDegrees);
+            maxRotationSpreadDegrees,
+            1f);
     }
 
     public static AnchorObservationResult AlreadyAnchored(int requiredSampleCount, in Pose pose)
@@ -92,6 +99,17 @@ public readonly struct AnchorObservationResult
             requiredSampleCount,
             pose,
             0f,
-            0f);
+            0f,
+            1f);
+    }
+
+    private static float GetSampleProgress(int sampleCount, int requiredSampleCount)
+    {
+        if (requiredSampleCount <= 0)
+        {
+            return 0f;
+        }
+
+        return Mathf.Clamp01(sampleCount / (float)requiredSampleCount);
     }
 }

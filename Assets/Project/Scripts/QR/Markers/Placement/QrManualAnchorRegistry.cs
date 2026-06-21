@@ -95,7 +95,8 @@ public sealed class QrManualAnchorRegistry : IDisposable
                 RequiredSampleCount,
                 averagedPose,
                 metrics.MaxPositionSpreadMeters,
-                metrics.MaxRotationSpreadDegrees);
+                metrics.MaxRotationSpreadDegrees,
+                CalculateStabilityProgress(metrics));
         }
 
         var anchorObject = CreateAnchorObject(markerId, averagedPose);
@@ -144,6 +145,17 @@ public sealed class QrManualAnchorRegistry : IDisposable
 
         qrFactory.CreateButton(btnPrefab, markerId, pose, out var instance);
         return instance != null ? instance.gameObject : null;
+    }
+
+    private static float CalculateStabilityProgress(in SpreadMetrics metrics)
+    {
+        var positionProgress = metrics.MaxPositionSpreadMeters <= 0f
+            ? 1f
+            : Mathf.Clamp01(MaxPositionSpreadMeters / metrics.MaxPositionSpreadMeters);
+        var rotationProgress = metrics.MaxRotationSpreadDegrees <= 0f
+            ? 1f
+            : Mathf.Clamp01(MaxRotationSpreadDegrees / metrics.MaxRotationSpreadDegrees);
+        return Mathf.Min(positionProgress, rotationProgress);
     }
 
     private sealed class AnchorState

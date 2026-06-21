@@ -35,6 +35,7 @@ namespace Project.Scripts
 
             if (!payloadParser.TryParse(detection.Text, out var payload))
             {
+                poseResolver?.SetScanProgress(0f, false);
                 statusText = BuildStatusText(UnsupportedPayloadPrompt);
                 poseResolver?.ClearResolvedPose();
                 return false;
@@ -42,6 +43,7 @@ namespace Project.Scripts
 
             if (!markerRegistry.TryGet(payload.MarkerId, out var definition))
             {
+                poseResolver?.SetScanProgress(0f, false);
                 statusText = BuildStatusText($"{UnregisteredPrompt}: \"{payload.MarkerId}\"");
                 poseResolver?.ClearResolvedPose();
                 return false;
@@ -51,10 +53,12 @@ namespace Project.Scripts
             {
                 if (!poseResolver.TryResolvePose(detection, definition, out var trackingPose))
                 {
+                    poseResolver?.SetScanProgress(0f, false);
                     statusText = BuildStatusText(ResolveFailedPrompt, null, null);
                     return false;
                 }
 
+                poseResolver.SetScanProgress(0f, false);
                 statusText = BuildStatusText(
                     $"{TrackingPrompt}{payload.MarkerId}",
                     trackingPose,
@@ -65,6 +69,7 @@ namespace Project.Scripts
 
             if (manualAnchorRegistry.TryGetLockedAnchor(payload.MarkerId, out var lockedPose))
             {
+                poseResolver?.SetScanProgress(0f, false);
                 poseResolver?.ClearResolvedPose();
                 statusText = BuildStatusText(
                     $"QR anchor зафиксирован: {payload.MarkerId}",
@@ -75,11 +80,17 @@ namespace Project.Scripts
 
             if (!poseResolver.TryResolvePose(detection, definition, out var markerPose))
             {
+                poseResolver?.SetScanProgress(0f, false);
                 statusText = BuildStatusText(ResolveFailedPrompt, null, null);
                 return false;
             }
 
             var observation = manualAnchorRegistry.RegisterObservation(payload.MarkerId, markerPose);
+            poseResolver.SetScanProgress(
+                observation.NormalizedProgress,
+                observation.State == AnchorObservationResult.ObservationState.Collecting ||
+                observation.State == AnchorObservationResult.ObservationState.Unstable ||
+                observation.State == AnchorObservationResult.ObservationState.Created);
             statusText = observation.State switch
             {
                 AnchorObservationResult.ObservationState.Collecting => BuildStatusText(

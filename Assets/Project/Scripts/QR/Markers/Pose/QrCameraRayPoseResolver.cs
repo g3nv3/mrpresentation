@@ -65,6 +65,7 @@ public sealed partial class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseReso
     [SerializeField] private PoseResolverViewStrategyType viewStrategy = PoseResolverViewStrategyType.Debug;
     [SerializeField] private QrPoseResolverDebugView debugView = new QrPoseResolverDebugView();
     [SerializeField] private QrPoseResolverCenterTransformView centerTransformView = new QrPoseResolverCenterTransformView();
+    [SerializeField] private QrPoseResolverStatusBarView statusBarView = new QrPoseResolverStatusBarView();
 
     private readonly List<Vector3> debugResultPointPositions = new List<Vector3>(4);
     private bool hasCachedProjectionData;
@@ -272,6 +273,7 @@ public sealed partial class QrCameraRayPoseResolver : MonoBehaviour, IQrPoseReso
         lastDebugStatus = "ray: cleared";
         nextPoseDiagnosticsTime = 0f;
         debugResultPointPositions.Clear();
+        SetScanProgress(0f, false);
         HideView();
     }
 
