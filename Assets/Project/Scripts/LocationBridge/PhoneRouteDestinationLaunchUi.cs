@@ -72,6 +72,7 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         if (navigatorBridge != null)
         {
             navigatorBridge.RouteRequestCompleted += OnRouteRequestCompleted;
+            navigatorBridge.RouteDisabled += OnRouteDisabled;
         }
 
         if (stopButton != null)
@@ -97,6 +98,7 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         if (navigatorBridge != null)
         {
             navigatorBridge.RouteRequestCompleted -= OnRouteRequestCompleted;
+            navigatorBridge.RouteDisabled -= OnRouteDisabled;
         }
 
         if (stopButton != null)
@@ -137,7 +139,8 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
 
     private void OnDestinationReceived(PhoneRouteDestination destination, IPEndPoint remoteEndPoint)
     {
-        if (stopVisibleRouteWhenNewDestinationArrives && _hasActiveRoute && navigatorBridge != null)
+        var destinationChanged = !IsSameDestination(_pendingDestination, destination);
+        if (destinationChanged && stopVisibleRouteWhenNewDestinationArrives && _hasActiveRoute && navigatorBridge != null)
         {
             navigatorBridge.DisableRoute();
             _hasActiveRoute = false;
@@ -153,6 +156,14 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
     {
         _isRouteRequesting = false;
         _hasActiveRoute = result != null && result.Succeeded && _activeDestination.HasValue;
+        RefreshView();
+    }
+
+    private void OnRouteDisabled()
+    {
+        _hasActiveRoute = false;
+        _isRouteRequesting = false;
+        _activeDestination = null;
         RefreshView();
     }
 

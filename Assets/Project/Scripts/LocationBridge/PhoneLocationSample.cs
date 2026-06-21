@@ -12,6 +12,9 @@ public struct PhoneLocationSample
     public float VerticalAccuracyMeters;
     public float SpeedMetersPerSecond;
     public float CourseDegrees;
+    public bool HasHeading;
+    public float HeadingDegrees;
+    public float HeadingAccuracyDegrees;
     public double Timestamp;
     public int Sequence;
 

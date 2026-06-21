@@ -5,15 +5,11 @@ using UnityEngine;
 public sealed class PhoneLocationDebugLogger : MonoBehaviour
 {
     [Header("Sources")]
-    [SerializeField] private PhoneGpsLocationProvider gpsProvider;
-    [SerializeField] private PhoneLocationUdpBroadcaster broadcaster;
     [SerializeField] private PhoneLocationUdpReceiver receiver;
     [SerializeField] private PhoneLocationYandexNavigatorBridge yandexBridge;
 
     [Header("Logging")]
     [SerializeField] private bool logOnEnable = true;
-    [SerializeField] private bool logGpsUpdates = true;
-    [SerializeField] private bool logSentPackets = true;
     [SerializeField] private bool logReceivedPackets = true;
     [SerializeField] private bool logErrors = true;
     [SerializeField] private bool logPeriodicStatus = true;
@@ -67,16 +63,6 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
 
     private void ResolveSources()
     {
-        if (gpsProvider == null)
-        {
-            gpsProvider = GetComponent<PhoneGpsLocationProvider>();
-        }
-
-        if (broadcaster == null)
-        {
-            broadcaster = GetComponent<PhoneLocationUdpBroadcaster>();
-        }
-
         if (receiver == null)
         {
             receiver = GetComponent<PhoneLocationUdpReceiver>();
@@ -90,18 +76,6 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
 
     private void Subscribe()
     {
-        if (gpsProvider != null)
-        {
-            gpsProvider.LocationUpdated += OnGpsLocationUpdated;
-            gpsProvider.Failed += OnFailure;
-        }
-
-        if (broadcaster != null)
-        {
-            broadcaster.PacketSent += OnPacketSent;
-            broadcaster.Failed += OnFailure;
-        }
-
         if (receiver != null)
         {
             receiver.LocationReceived += OnLocationReceived;
@@ -111,38 +85,10 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
 
     private void Unsubscribe()
     {
-        if (gpsProvider != null)
-        {
-            gpsProvider.LocationUpdated -= OnGpsLocationUpdated;
-            gpsProvider.Failed -= OnFailure;
-        }
-
-        if (broadcaster != null)
-        {
-            broadcaster.PacketSent -= OnPacketSent;
-            broadcaster.Failed -= OnFailure;
-        }
-
         if (receiver != null)
         {
             receiver.LocationReceived -= OnLocationReceived;
             receiver.Failed -= OnFailure;
-        }
-    }
-
-    private void OnGpsLocationUpdated(PhoneLocationSample sample)
-    {
-        if (logGpsUpdates)
-        {
-            Log("gps update " + FormatSample(sample));
-        }
-    }
-
-    private void OnPacketSent(PhoneLocationSample sample)
-    {
-        if (logSentPackets)
-        {
-            Log("udp sent " + FormatSample(sample));
         }
     }
 
@@ -164,19 +110,6 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
 
     private void LogStatus(string reason)
     {
-        var gpsStatus = gpsProvider != null
-            ? "gps(status=" + gpsProvider.Status +
-              ", has=" + gpsProvider.HasLocation +
-              ", running=" + gpsProvider.IsRunning +
-              ", starting=" + gpsProvider.IsStarting + ")"
-            : "gps(null)";
-
-        var broadcasterStatus = broadcaster != null
-            ? "broadcaster(active=" + broadcaster.IsBroadcasting +
-              ", target=" + broadcaster.TargetAddress +
-              ":" + broadcaster.TargetPort + ")"
-            : "broadcaster(null)";
-
         var receiverStatus = receiver != null
             ? "receiver(active=" + receiver.IsListening +
               ", port=" + receiver.ListenPort +
@@ -188,12 +121,7 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
             ? "bridge(applied=" + yandexBridge.LatestAppliedSample.HasValue + ")"
             : "bridge(null)";
 
-        Log("status " + reason + " " + gpsStatus + " " + broadcasterStatus + " " + receiverStatus + " " + bridgeStatus);
-
-        if (gpsProvider != null && gpsProvider.HasLocation)
-        {
-            Log("latest gps " + FormatSample(gpsProvider.LastSample));
-        }
+        Log("status " + reason + " " + receiverStatus + " " + bridgeStatus);
 
         if (receiver != null && receiver.HasLocation)
         {
@@ -210,7 +138,7 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
     {
         return string.Format(
             System.Globalization.CultureInfo.InvariantCulture,
-            "seq={0} device={1} lat={2:F7} lon={3:F7} alt={4:F1} hAcc={5:F1} vAcc={6:F1} speed={7:F2} course={8:F1} ts={9:F3}",
+            "seq={0} device={1} lat={2:F7} lon={3:F7} alt={4:F1} hAcc={5:F1} vAcc={6:F1} speed={7:F2} course={8:F1} heading={9:F1} headingAcc={10:F1} hasHeading={11} ts={12:F3}",
             sample.Sequence,
             sample.DeviceId,
             sample.Latitude,
@@ -220,6 +148,9 @@ public sealed class PhoneLocationDebugLogger : MonoBehaviour
             sample.VerticalAccuracyMeters,
             sample.SpeedMetersPerSecond,
             sample.CourseDegrees,
+            sample.HeadingDegrees,
+            sample.HeadingAccuracyDegrees,
+            sample.HasHeading,
             sample.Timestamp);
     }
 }

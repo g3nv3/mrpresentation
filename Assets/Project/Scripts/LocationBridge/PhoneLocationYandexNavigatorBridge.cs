@@ -11,8 +11,15 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
     [Header("Behavior")]
     [SerializeField] private bool applyEveryReceivedLocation = true;
     [SerializeField] private bool rebuildVisibleRouteOnLocation = true;
+    [SerializeField, Min(0f)] private float minimumRebuildDistanceMeters = 3f;
+    [SerializeField, Min(0f)] private float minimumRebuildIntervalSeconds = 2f;
+    [SerializeField, Min(0f)] private float minimumAlignmentSpeedMetersPerSecond = 0.4f;
+    [SerializeField, Min(0f)] private float maximumHeadingAccuracyDegrees = 45f;
 
     public PhoneLocationSample? LatestAppliedSample { get; private set; }
+
+    private GeoCoordinate? _lastRouteCoordinate;
+    private float _lastRebuildTime = float.NegativeInfinity;
 
     private void Awake()
     {
@@ -60,15 +67,76 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
             return false;
         }
 
-        navigator.SetCurrentCoordinate(new GeoCoordinate(sample.Latitude, sample.Longitude));
+        var coordinate = new GeoCoordinate(sample.Latitude, sample.Longitude);
+        navigator.SetCurrentCoordinate(coordinate);
         LatestAppliedSample = sample;
 
-        if (rebuildVisibleRouteOnLocation && navigator.IsRouteVisible)
+        if (navigator.IsRouteVisible && !navigator.HasGeographicNorthAlignment)
         {
-            navigator.TryRebuildRouteFromCurrentCoordinate();
+            TryAlignGeographicNorthFromLatestHeading();
+        }
+
+        if (rebuildVisibleRouteOnLocation && navigator.IsRouteVisible && ShouldRebuild(coordinate))
+        {
+            if (navigator.TryRebuildRouteFromCurrentCoordinate())
+            {
+                _lastRouteCoordinate = coordinate;
+                _lastRebuildTime = Time.unscaledTime;
+            }
         }
 
         return true;
+    }
+
+    public bool TryAlignGeographicNorthFromLatestCourse()
+    {
+        if (!LatestAppliedSample.HasValue)
+        {
+            return false;
+        }
+
+        var sample = LatestAppliedSample.Value;
+        return sample.CourseDegrees >= 0f &&
+               sample.SpeedMetersPerSecond >= minimumAlignmentSpeedMetersPerSecond &&
+               navigator != null &&
+               navigator.TryAlignGeographicNorthToCourse(sample.CourseDegrees);
+    }
+
+    public bool TryAlignGeographicNorthFromLatestHeading(bool force = false)
+    {
+        if (!LatestAppliedSample.HasValue || navigator == null)
+        {
+            return false;
+        }
+
+        var sample = LatestAppliedSample.Value;
+        if (!sample.HasHeading || sample.HeadingDegrees < 0f || sample.HeadingDegrees >= 360f)
+        {
+            return false;
+        }
+
+        if (sample.HeadingAccuracyDegrees >= 0f &&
+            sample.HeadingAccuracyDegrees > maximumHeadingAccuracyDegrees)
+        {
+            return false;
+        }
+
+        return force
+            ? navigator.TryAlignGeographicNorthToHeading(sample.HeadingDegrees)
+            : navigator.TryAlignGeographicNorthToCourse(sample.HeadingDegrees);
+    }
+
+    private bool ShouldRebuild(GeoCoordinate coordinate)
+    {
+        if (navigator.IsRequesting ||
+            Time.unscaledTime - _lastRebuildTime < minimumRebuildIntervalSeconds)
+        {
+            return false;
+        }
+
+        return !_lastRouteCoordinate.HasValue ||
+               GeoCoordinateUtility.GetMetersOffset(_lastRouteCoordinate.Value, coordinate).magnitude >=
+               minimumRebuildDistanceMeters;
     }
 
     private void OnLocationReceived(PhoneLocationSample sample, IPEndPoint remoteEndPoint)

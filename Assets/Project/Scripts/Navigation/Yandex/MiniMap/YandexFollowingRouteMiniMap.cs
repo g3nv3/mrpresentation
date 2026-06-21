@@ -254,9 +254,13 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
 
         SetCenter(new GeoCoordinate(sample.Latitude, sample.Longitude));
 
-        if (rotateMapWithCourse &&
-            sample.CourseDegrees >= 0f &&
-            sample.SpeedMetersPerSecond >= minimumCourseSpeedMetersPerSecond)
+        if (rotateMapWithCourse && sample.HasHeading && sample.HeadingDegrees >= 0f)
+        {
+            _targetHeadingDegrees = sample.HeadingDegrees;
+        }
+        else if (rotateMapWithCourse &&
+                 sample.CourseDegrees >= 0f &&
+                 sample.SpeedMetersPerSecond >= minimumCourseSpeedMetersPerSecond)
         {
             _targetHeadingDegrees = sample.CourseDegrees;
         }

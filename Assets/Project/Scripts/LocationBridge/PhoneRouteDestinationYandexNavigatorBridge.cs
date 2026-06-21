@@ -13,6 +13,7 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
     [Header("Behavior")]
     [SerializeField] private bool buildRouteOnDestinationReceived;
     [SerializeField] private bool applyLatestPhoneLocationBeforeRoute = true;
+    [SerializeField] private bool requirePhoneHeading = true;
 
     public PhoneRouteDestination? LatestAppliedDestination { get; private set; }
     public event Action<YandexRouteResult> RouteRequestCompleted;
@@ -86,8 +87,24 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
             locationBridge.ApplyLatestLocation();
         }
 
+        if (!navigator.CurrentCoordinate.HasValue)
+        {
+            return false;
+        }
+
+        var destinationCoordinate = destination.ToGeoCoordinate();
+        var headingApplied = locationBridge != null &&
+                             locationBridge.TryAlignGeographicNorthFromLatestHeading(true);
+        if (requirePhoneHeading && !headingApplied)
+        {
+            Debug.LogWarning(
+                "Route was not started because the phone packet has no reliable compass heading.",
+                this);
+            return false;
+        }
+
         LatestAppliedDestination = destination;
-        navigator.ShowRouteTo(destination.ToGeoCoordinate());
+        navigator.ShowRouteTo(destinationCoordinate);
         return true;
     }
 

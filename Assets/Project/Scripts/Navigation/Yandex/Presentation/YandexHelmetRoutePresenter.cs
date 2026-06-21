@@ -20,6 +20,9 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     [Tooltip("Использует только поворот игрока по Y, чтобы линия оставалась горизонтальной.")]
     [SerializeField] private bool yawOnlyRotation = true;
 
+    [Tooltip("Поворот географического севера относительно мирового +Z. Не зависит от текущего поворота головы.")]
+    [SerializeField] private float geographicNorthYawDegrees;
+
     [Header("Route Projection")]
     [Tooltip("Масштаб перевода реальных метров маршрута в Unity units. При стандартном масштабе Unity 1 unit = 1 meter.")]
     [SerializeField, Min(0.001f)] private float metersToUnityScale = 1f;
@@ -40,6 +43,7 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     private readonly List<Vector3> _localRoutePoints = new List<Vector3>();
     private readonly List<Vector3> _worldRoutePoints = new List<Vector3>();
     private YandexRouteData _currentRoute;
+    private bool _hasGeographicNorthAlignment;
 
     public Transform PlayerTransform
     {
@@ -63,6 +67,8 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
 
     public YandexRouteData CurrentRoute => _currentRoute;
     public bool IsVisible => pathView != null && pathView.IsVisible;
+    public float GeographicNorthYawDegrees => geographicNorthYawDegrees;
+    public bool HasGeographicNorthAlignment => _hasGeographicNorthAlignment;
 
     private Transform AnchorTransform => playerTransform != null ? playerTransform : transform;
 
@@ -147,6 +153,47 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
         RouteOffset = offset;
     }
 
+    public bool IsPlayerWithinEndpointDistance(float distanceMeters)
+    {
+        if (!IsVisible || playerTransform == null || _worldRoutePoints.Count < 2)
+        {
+            return false;
+        }
+
+        var endpoint = _worldRoutePoints[_worldRoutePoints.Count - 1];
+        var delta = playerTransform.position - endpoint;
+        delta.y = 0f;
+        return delta.sqrMagnitude <= distanceMeters * distanceMeters;
+    }
+
+    public bool TryAlignGeographicNorthToCourse(float courseDegrees)
+    {
+        if (playerTransform == null || courseDegrees < 0f || courseDegrees > 360f)
+        {
+            return false;
+        }
+
+        if (_hasGeographicNorthAlignment)
+        {
+            return true;
+        }
+
+        return TryAlignGeographicNorthToHeading(courseDegrees);
+    }
+
+    public bool TryAlignGeographicNorthToHeading(float headingDegrees)
+    {
+        if (playerTransform == null || headingDegrees < 0f || headingDegrees >= 360f)
+        {
+            return false;
+        }
+
+        geographicNorthYawDegrees = Mathf.DeltaAngle(0f, playerTransform.eulerAngles.y - headingDegrees);
+        _hasGeographicNorthAlignment = true;
+        RebuildView();
+        return true;
+    }
+
     private void EnsureDependencies()
     {
         if (pathView == null)
@@ -217,7 +264,8 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     {
         if (!rotateWithPlayer)
         {
-            return anchor.position + routeOffset;
+            var playerYaw = Quaternion.Euler(0f, anchor.eulerAngles.y, 0f);
+            return anchor.position + playerYaw * routeOffset;
         }
 
         if (rotateWithPlayer && yawOnlyRotation)
@@ -232,7 +280,7 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
     {
         if (!rotateWithPlayer)
         {
-            return Quaternion.identity;
+            return Quaternion.Euler(0f, geographicNorthYawDegrees, 0f);
         }
 
         if (!yawOnlyRotation)

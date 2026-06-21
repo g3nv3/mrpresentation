@@ -27,7 +27,14 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     [Tooltip("Запрашивает и рисует маршрут по умолчанию в Start.")]
     [SerializeField] private bool showDefaultRouteOnStart;
 
+    [Header("Route Completion")]
+    [SerializeField] private bool completeAtSceneEndpoint = true;
+    [SerializeField, Min(0.1f)] private float sceneEndpointDistanceMeters = 0.5f;
+
     private Coroutine _activeRequest;
+    private MonoBehaviour _activeRequestOwner;
+    private int _requestVersion;
+    private bool _isRequesting;
     private GeoCoordinate? _currentCoordinate;
     private GeoCoordinate? _currentDestination;
 
@@ -37,6 +44,8 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     public GeoCoordinate? CurrentCoordinate => _currentCoordinate;
     public GeoCoordinate? CurrentDestination => _currentDestination;
     public bool IsRouteVisible => routePresenter != null && routePresenter.IsVisible;
+    public bool IsRequesting => _isRequesting;
+    public bool HasGeographicNorthAlignment => routePresenter != null && routePresenter.HasGeographicNorthAlignment;
     private IYandexRouteClient ActiveRouteClient => openRouteServiceClient != null ? openRouteServiceClient : routeClient;
     private YandexRouteTravelMode ActiveDefaultMode => openRouteServiceClient != null
         ? openRouteServiceClient.DefaultMode
@@ -73,6 +82,16 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
         }
     }
 
+    private void Update()
+    {
+        if (completeAtSceneEndpoint &&
+            routePresenter != null &&
+            routePresenter.IsPlayerWithinEndpointDistance(sceneEndpointDistanceMeters))
+        {
+            DisableRoute();
+        }
+    }
+
     public void SetDependencies(YandexMapsRouteClient client, YandexHelmetRoutePresenter presenter)
     {
         routeClient = client;
@@ -94,6 +113,16 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     public void SetCurrentCoordinate(double latitude, double longitude)
     {
         SetCurrentCoordinate(new GeoCoordinate(latitude, longitude));
+    }
+
+    public bool TryAlignGeographicNorthToCourse(float courseDegrees)
+    {
+        return routePresenter != null && routePresenter.TryAlignGeographicNorthToCourse(courseDegrees);
+    }
+
+    public bool TryAlignGeographicNorthToHeading(float headingDegrees)
+    {
+        return routePresenter != null && routePresenter.TryAlignGeographicNorthToHeading(headingDegrees);
     }
 
     public Coroutine ShowRoute(double startLatitude, double startLongitude, double finishLatitude, double finishLongitude)
@@ -152,16 +181,28 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
             return null;
         }
 
+        var keepVisibleRouteOnFailure = IsRouteVisible;
         CancelActiveRequest();
-        _activeRequest = activeRouteClient.RequestRoute(request, result =>
+        var requestVersion = ++_requestVersion;
+        _isRequesting = true;
+        _activeRequestOwner = activeRouteClient as MonoBehaviour;
+
+        var requestCoroutine = activeRouteClient.RequestRoute(request, result =>
         {
+            if (requestVersion != _requestVersion)
+            {
+                return;
+            }
+
             _activeRequest = null;
+            _activeRequestOwner = null;
+            _isRequesting = false;
 
             if (result.Succeeded)
             {
                 routePresenter.TryShowRoute(result.Route);
             }
-            else
+            else if (!keepVisibleRouteOnFailure)
             {
                 routePresenter.DisableRoute();
             }
@@ -169,6 +210,13 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
             RouteRequestCompleted?.Invoke(result);
             completed?.Invoke(result);
         });
+
+        // StartCoroutine can invoke the callback synchronously before returning when
+        // validation fails, so do not resurrect an already completed request here.
+        if (_isRequesting && requestVersion == _requestVersion)
+        {
+            _activeRequest = requestCoroutine;
+        }
 
         return _activeRequest;
     }
@@ -193,13 +241,20 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
 
     private void CancelActiveRequest()
     {
-        if (_activeRequest == null)
+        if (_activeRequest == null && !_isRequesting)
         {
             return;
         }
 
-        StopCoroutine(_activeRequest);
+        _requestVersion++;
+        if (_activeRequest != null && _activeRequestOwner != null)
+        {
+            _activeRequestOwner.StopCoroutine(_activeRequest);
+        }
+
         _activeRequest = null;
+        _activeRequestOwner = null;
+        _isRequesting = false;
     }
 
     private void CompleteWithFailure(string error, Action<YandexRouteResult> completed)
