@@ -11,8 +11,6 @@ public sealed class PinchSurfaceFeedbackView : MonoBehaviour
     [SerializeField, Min(0f)] private float hideDuration = 0.18f;
     [SerializeField] private Ease showEase = Ease.OutBack;
     [SerializeField] private Ease hideEase = Ease.InBack;
-    
-    private GameObject _hitObject;
 
     public void ShowHit(Pose pose)
     {
@@ -22,7 +20,7 @@ public sealed class PinchSurfaceFeedbackView : MonoBehaviour
         }
 
         var instance = Instantiate(hitPrefab, pose.position, pose.rotation);
-        var visibleScale = _hitObject.transform.localScale;
+        var visibleScale = instance.transform.localScale;
         var instanceTransform = instance.transform;
         instanceTransform.localScale = Vector3.zero;
 

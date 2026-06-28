@@ -41,14 +41,14 @@ public sealed class HandRaySurfaceProbeController : MonoBehaviour, IUiToggleStat
     {
         if (_handInput != null)
         {
-            _handInput.PinchStarted -= HandlePinchStarted;
+            _handInput.RawIndexPinchStarted -= HandlePinchStarted;
         }
 
         _handInput = handInput;
 
         if (_handInput != null)
         {
-            _handInput.PinchStarted += HandlePinchStarted;
+            _handInput.RawIndexPinchStarted += HandlePinchStarted;
         }
     }
 
@@ -85,7 +85,7 @@ public sealed class HandRaySurfaceProbeController : MonoBehaviour, IUiToggleStat
             return;
         }
 
-        _handInput.PinchStarted -= HandlePinchStarted;
+        _handInput.RawIndexPinchStarted -= HandlePinchStarted;
     }
 
     private void HandlePinchStarted(HandPointerTarget target)

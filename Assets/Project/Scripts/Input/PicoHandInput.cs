@@ -7,13 +7,45 @@ public interface IPicoHandInput
 {
     bool IsTracked { get; }
     bool PinchHeld { get; }
+    bool RawPinchHeld { get; }
     HandPointerTarget CurrentTarget { get; }
     Vector3 ContactPosition { get; }
     Quaternion ContactRotation { get; }
     bool TryGetCurrentContact(out HandContactTarget target);
 
+    event Action<HandPointerTarget> RawPinchStarted;
+    event Action<HandPointerTarget> RawDoublePinchStarted;
+    event Action<PicoPinchFinger, HandPointerTarget> RawFingerPinchStarted;
+    event Action<PicoPinchFinger, HandPointerTarget> RawFingerDoublePinchStarted;
+    event Action<HandPointerTarget> RawIndexPinchStarted;
+    event Action<HandPointerTarget> RawMiddlePinchStarted;
+    event Action<HandPointerTarget> RawRingPinchStarted;
+    event Action<HandPointerTarget> RawLittlePinchStarted;
+    event Action<HandPointerTarget> RawIndexDoublePinchStarted;
+    event Action<HandPointerTarget> RawMiddleDoublePinchStarted;
+    event Action<HandPointerTarget> RawRingDoublePinchStarted;
+    event Action<HandPointerTarget> RawLittleDoublePinchStarted;
+
     event Action<HandPointerTarget> PinchStarted;
     event Action<HandPointerTarget> DoublePinchStarted;
+    event Action<PicoPinchFinger, HandPointerTarget> FingerPinchStarted;
+    event Action<PicoPinchFinger, HandPointerTarget> FingerDoublePinchStarted;
+    event Action<HandPointerTarget> IndexPinchStarted;
+    event Action<HandPointerTarget> MiddlePinchStarted;
+    event Action<HandPointerTarget> RingPinchStarted;
+    event Action<HandPointerTarget> LittlePinchStarted;
+    event Action<HandPointerTarget> IndexDoublePinchStarted;
+    event Action<HandPointerTarget> MiddleDoublePinchStarted;
+    event Action<HandPointerTarget> RingDoublePinchStarted;
+    event Action<HandPointerTarget> LittleDoublePinchStarted;
+}
+
+public enum PicoPinchFinger
+{
+    Index,
+    Middle,
+    Ring,
+    Little
 }
 
 public class PicoHandInput : MonoBehaviour, IPicoHandInput
@@ -59,6 +91,9 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public bool PinchDown { get; private set; }
     public bool PinchHeld { get; private set; }
     public bool PinchUp { get; private set; }
+    public bool RawPinchDown { get; private set; }
+    public bool RawPinchHeld { get; private set; }
+    public bool RawPinchUp { get; private set; }
     public Vector3 PinchPosition { get; private set; }
     public Vector3 ContactPosition { get; private set; }
     public Quaternion ContactRotation { get; private set; } = Quaternion.identity;
@@ -68,8 +103,31 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     public HandPointerTarget CurrentTarget { get; private set; }
     public HandContactTarget CurrentContactTarget { get; private set; }
 
+    public event Action<HandPointerTarget> RawPinchStarted;
+    public event Action<HandPointerTarget> RawDoublePinchStarted;
+    public event Action<PicoPinchFinger, HandPointerTarget> RawFingerPinchStarted;
+    public event Action<PicoPinchFinger, HandPointerTarget> RawFingerDoublePinchStarted;
+    public event Action<HandPointerTarget> RawIndexPinchStarted;
+    public event Action<HandPointerTarget> RawMiddlePinchStarted;
+    public event Action<HandPointerTarget> RawRingPinchStarted;
+    public event Action<HandPointerTarget> RawLittlePinchStarted;
+    public event Action<HandPointerTarget> RawIndexDoublePinchStarted;
+    public event Action<HandPointerTarget> RawMiddleDoublePinchStarted;
+    public event Action<HandPointerTarget> RawRingDoublePinchStarted;
+    public event Action<HandPointerTarget> RawLittleDoublePinchStarted;
+
     public event Action<HandPointerTarget> PinchStarted;
     public event Action<HandPointerTarget> DoublePinchStarted;
+    public event Action<PicoPinchFinger, HandPointerTarget> FingerPinchStarted;
+    public event Action<PicoPinchFinger, HandPointerTarget> FingerDoublePinchStarted;
+    public event Action<HandPointerTarget> IndexPinchStarted;
+    public event Action<HandPointerTarget> MiddlePinchStarted;
+    public event Action<HandPointerTarget> RingPinchStarted;
+    public event Action<HandPointerTarget> LittlePinchStarted;
+    public event Action<HandPointerTarget> IndexDoublePinchStarted;
+    public event Action<HandPointerTarget> MiddleDoublePinchStarted;
+    public event Action<HandPointerTarget> RingDoublePinchStarted;
+    public event Action<HandPointerTarget> LittleDoublePinchStarted;
     public event Action<HandContactTarget> ContactStarted;
     public event Action<HandContactTarget> ContactEnded;
 
@@ -80,8 +138,27 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     private int _contactTipCount;
     private HandPinchDraggableEffect _currentContactDraggableEffect;
     private HandContactTarget _lastContactTarget;
+    private readonly bool[] _rawFingerPinching = new bool[FingerTipJoints.Length];
+    private readonly bool[] _wasRawFingerPinching = new bool[FingerTipJoints.Length];
+    private readonly bool[] _fingerPinching = new bool[FingerTipJoints.Length];
+    private readonly bool[] _wasFingerPinching = new bool[FingerTipJoints.Length];
+    private readonly float[] _lastRawFingerPinchStartedTime = CreateInitialPinchTimes();
+    private readonly float[] _lastFingerPinchStartedTime = CreateInitialPinchTimes();
+    private bool _wasRawPinching;
     private bool _wasPinching;
+    private float _lastRawPinchStartedTime = float.NegativeInfinity;
     private float _lastPinchStartedTime = float.NegativeInfinity;
+
+    private static float[] CreateInitialPinchTimes()
+    {
+        var times = new float[FingerTipJoints.Length];
+        for (int i = 0; i < times.Length; i++)
+        {
+            times[i] = float.NegativeInfinity;
+        }
+
+        return times;
+    }
 
     private void Start()
     {
@@ -95,7 +172,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
     {
         ResetFrameState();
 
-        if (!TryReadHandState(out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip))
+        if (!TryReadHandState(out bool rawIsPinching, out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip))
         {
             ReleaseContactIfNeeded();
             ReleasePinchIfNeeded();
@@ -108,8 +185,8 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         UpdateRaycast();
         UpdateContactTarget();
         UpdateContactState();
-        // Subscribers to PinchStarted read the current hit immediately.
-        UpdatePinchState(isPinching);
+        // Subscribers to pinch events read the current hit immediately.
+        UpdatePinchState(rawIsPinching, isPinching);
     }
 
     private void ResetFrameState()
@@ -117,6 +194,8 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         IsTracked = false;
         PinchDown = false;
         PinchUp = false;
+        RawPinchDown = false;
+        RawPinchUp = false;
         PinchPosition = default;
         ContactPosition = default;
         ContactRotation = Quaternion.identity;
@@ -134,11 +213,13 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         }
     }
 
-    private bool TryReadHandState(out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip)
+    private bool TryReadHandState(out bool rawIsPinching, out bool isPinching, out Vector3 indexTip, out Vector3 thumbTip)
     {
+        rawIsPinching = false;
         isPinching = false;
         indexTip = default;
         thumbTip = default;
+        ClearCurrentFingerPinches();
 
         HandJointLocations joints = new HandJointLocations();
         if (!PXR_HandTracking.GetJointLocations(handType, ref joints))
@@ -147,27 +228,35 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         if (joints.jointLocations == null || joints.jointLocations.Length == 0)
             return false;
 
-        var poseJoint = FindClosestPinchFingerTipJoint(joints, out var poseJointPosition);
+        FindClosestPinchFingerTipJoint(joints, out var poseJointPosition);
         UpdateContactTipPoints(joints);
 
         if (useStrictTrackingValidation &&
-            !IsStrictPinchPoseValid(joints, poseJoint))
+            !IsBasePinchPoseValid(joints))
         {
             return false;
         }
 
-        thumbTip = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
+        if (!TryGetJointPosition(joints, HandJoint.JointThumbTip, out thumbTip))
+        {
+            return false;
+        }
+
         indexTip = poseJointPosition;
-        ContactRotation = ToUnityRot(joints.jointLocations[(int)HandJoint.JointWrist].pose.Orientation);
-        var pinchDistance = Vector3.Distance(indexTip, thumbTip);
-        var releaseThreshold = Mathf.Max(pinchStartDistanceThreshold, pinchReleaseDistanceThreshold);
-        isPinching = _wasPinching
-            ? pinchDistance <= releaseThreshold
-            : pinchDistance <= pinchStartDistanceThreshold;
+        if (!TryGetJointRotation(joints, HandJoint.JointWrist, out var wristRotation))
+        {
+            return false;
+        }
+
+        ContactRotation = wristRotation;
+        ReadFingerPinches(joints, thumbTip, out rawIsPinching);
+        CopyRawFingerPinchesToProtected();
+        isPinching = rawIsPinching;
 
         if (isPinching && !IsPalmUpPinchAllowed(ContactRotation))
         {
             isPinching = false;
+            ClearProtectedFingerPinches();
         }
 
         return true;
@@ -190,7 +279,7 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         return Vector3.Angle(palmUpDirection, Vector3.up) <= palmUpMaxAngleDegrees;
     }
 
-    private bool IsStrictPinchPoseValid(HandJointLocations joints, HandJoint selectedPinchJoint)
+    private bool IsBasePinchPoseValid(HandJointLocations joints)
     {
         if (joints.isActive == 0U)
         {
@@ -207,7 +296,15 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             return false;
         }
 
-        return HasRequiredPositionStatus(joints, selectedPinchJoint);
+        for (int i = 0; i < FingerTipJoints.Length; i++)
+        {
+            if (HasRequiredPositionStatus(joints, FingerTipJoints[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool HasRequiredPositionStatus(HandJointLocations joints, HandJoint joint)
@@ -222,22 +319,62 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         return (status & RequiredPositionFlags) == RequiredPositionFlags;
     }
 
+    private bool TryGetJointPosition(HandJointLocations joints, HandJoint joint, out Vector3 position)
+    {
+        position = default;
+        int index = (int)joint;
+        if (index < 0 || index >= joints.jointLocations.Length)
+        {
+            return false;
+        }
+
+        if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+        {
+            return false;
+        }
+
+        position = ToUnityPos(joints.jointLocations[index].pose.Position);
+        return true;
+    }
+
+    private bool TryGetJointRotation(HandJointLocations joints, HandJoint joint, out Quaternion rotation)
+    {
+        rotation = Quaternion.identity;
+        int index = (int)joint;
+        if (index < 0 || index >= joints.jointLocations.Length)
+        {
+            return false;
+        }
+
+        if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+        {
+            return false;
+        }
+
+        rotation = ToUnityRot(joints.jointLocations[index].pose.Orientation);
+        return true;
+    }
+
     private HandJoint FindClosestPinchFingerTipJoint(HandJointLocations joints, out Vector3 tipPosition)
     {
-        var thumbPosition = ToUnityPos(joints.jointLocations[(int)HandJoint.JointThumbTip].pose.Position);
+        if (!TryGetJointPosition(joints, HandJoint.JointThumbTip, out var thumbPosition))
+        {
+            tipPosition = default;
+            return HandJoint.JointIndexTip;
+        }
+
         var bestJoint = HandJoint.JointIndexTip;
         var bestDistance = float.PositiveInfinity;
-        tipPosition = ToUnityPos(joints.jointLocations[(int)bestJoint].pose.Position);
+        tipPosition = default;
 
         for (int i = 0; i < FingerTipJoints.Length; i++)
         {
             var joint = FingerTipJoints[i];
-            if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+            if (!TryGetJointPosition(joints, joint, out var candidatePosition))
             {
                 continue;
             }
 
-            var candidatePosition = ToUnityPos(joints.jointLocations[(int)joint].pose.Position);
             var distance = (candidatePosition - thumbPosition).sqrMagnitude;
             if (distance >= bestDistance)
             {
@@ -258,20 +395,110 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
         for (int i = 0; i < ContactTipJoints.Length; i++)
         {
             var joint = ContactTipJoints[i];
-            if (useStrictTrackingValidation && !HasRequiredPositionStatus(joints, joint))
+            if (!TryGetJointPosition(joints, joint, out var tipPosition))
             {
                 continue;
             }
 
-            _contactTipPoints[_contactTipCount++] = ToUnityPos(joints.jointLocations[(int)joint].pose.Position);
+            _contactTipPoints[_contactTipCount++] = tipPosition;
         }
     }
 
-    private void UpdatePinchState(bool isPinching)
+    private void ReadFingerPinches(HandJointLocations joints, Vector3 thumbTip, out bool anyPinching)
     {
+        anyPinching = false;
+        var releaseThreshold = Mathf.Max(pinchStartDistanceThreshold, pinchReleaseDistanceThreshold);
+
+        for (int i = 0; i < FingerTipJoints.Length; i++)
+        {
+            var joint = FingerTipJoints[i];
+            if (!TryGetJointPosition(joints, joint, out var fingerTip))
+            {
+                continue;
+            }
+
+            var pinchDistance = Vector3.Distance(fingerTip, thumbTip);
+            var isFingerPinching = _wasRawFingerPinching[i]
+                ? pinchDistance <= releaseThreshold
+                : pinchDistance <= pinchStartDistanceThreshold;
+
+            _rawFingerPinching[i] = isFingerPinching;
+            anyPinching |= isFingerPinching;
+        }
+    }
+
+    private void UpdatePinchState(bool rawIsPinching, bool isPinching)
+    {
+        RawPinchDown = rawIsPinching && !_wasRawPinching;
+        RawPinchHeld = rawIsPinching;
+        RawPinchUp = !rawIsPinching && _wasRawPinching;
+
         PinchDown = isPinching && !_wasPinching;
         PinchHeld = isPinching;
         PinchUp = !isPinching && _wasPinching;
+
+        for (int i = 0; i < FingerTipJoints.Length; i++)
+        {
+            var rawFingerDown = _rawFingerPinching[i] && !_wasRawFingerPinching[i];
+            if (rawFingerDown)
+            {
+                var rawFinger = ToPicoPinchFinger(i);
+                RawFingerPinchStarted?.Invoke(rawFinger, CurrentTarget);
+                InvokeRawFingerPinchStarted(rawFinger, CurrentTarget);
+
+                if (Time.unscaledTime - _lastRawFingerPinchStartedTime[i] <= doublePinchMaxIntervalSeconds)
+                {
+                    RawFingerDoublePinchStarted?.Invoke(rawFinger, CurrentTarget);
+                    InvokeRawFingerDoublePinchStarted(rawFinger, CurrentTarget);
+                    _lastRawFingerPinchStartedTime[i] = float.NegativeInfinity;
+                }
+                else
+                {
+                    _lastRawFingerPinchStartedTime[i] = Time.unscaledTime;
+                }
+            }
+
+            _wasRawFingerPinching[i] = _rawFingerPinching[i];
+
+            var fingerDown = _fingerPinching[i] && !_wasFingerPinching[i];
+            if (!fingerDown)
+            {
+                _wasFingerPinching[i] = _fingerPinching[i];
+                continue;
+            }
+
+            var finger = ToPicoPinchFinger(i);
+            FingerPinchStarted?.Invoke(finger, CurrentTarget);
+            InvokeFingerPinchStarted(finger, CurrentTarget);
+
+            if (Time.unscaledTime - _lastFingerPinchStartedTime[i] <= doublePinchMaxIntervalSeconds)
+            {
+                FingerDoublePinchStarted?.Invoke(finger, CurrentTarget);
+                InvokeFingerDoublePinchStarted(finger, CurrentTarget);
+                _lastFingerPinchStartedTime[i] = float.NegativeInfinity;
+            }
+            else
+            {
+                _lastFingerPinchStartedTime[i] = Time.unscaledTime;
+            }
+
+            _wasFingerPinching[i] = _fingerPinching[i];
+        }
+
+        if (RawPinchDown)
+        {
+            RawPinchStarted?.Invoke(CurrentTarget);
+
+            if (Time.unscaledTime - _lastRawPinchStartedTime <= doublePinchMaxIntervalSeconds)
+            {
+                RawDoublePinchStarted?.Invoke(CurrentTarget);
+                _lastRawPinchStartedTime = float.NegativeInfinity;
+            }
+            else
+            {
+                _lastRawPinchStartedTime = Time.unscaledTime;
+            }
+        }
 
         if (PinchDown)
         {
@@ -288,18 +515,157 @@ public class PicoHandInput : MonoBehaviour, IPicoHandInput
             }
         }
 
+        _wasRawPinching = rawIsPinching;
         _wasPinching = isPinching;
     }
 
     private void ReleasePinchIfNeeded()
     {
+        RawPinchHeld = false;
         PinchHeld = false;
+        ClearCurrentFingerPinches();
+
+        for (int i = 0; i < _wasRawFingerPinching.Length; i++)
+        {
+            _wasRawFingerPinching[i] = false;
+        }
+
+        for (int i = 0; i < _wasFingerPinching.Length; i++)
+        {
+            _wasFingerPinching[i] = false;
+        }
+
+        if (_wasRawPinching)
+        {
+            RawPinchUp = true;
+            _wasRawPinching = false;
+        }
 
         if (!_wasPinching)
             return;
 
         PinchUp = true;
         _wasPinching = false;
+    }
+
+    private void ClearCurrentFingerPinches()
+    {
+        for (int i = 0; i < _rawFingerPinching.Length; i++)
+        {
+            _rawFingerPinching[i] = false;
+        }
+
+        for (int i = 0; i < _fingerPinching.Length; i++)
+        {
+            _fingerPinching[i] = false;
+        }
+    }
+
+    private void ClearProtectedFingerPinches()
+    {
+        for (int i = 0; i < _fingerPinching.Length; i++)
+        {
+            _fingerPinching[i] = false;
+        }
+    }
+
+    private void CopyRawFingerPinchesToProtected()
+    {
+        for (int i = 0; i < _fingerPinching.Length; i++)
+        {
+            _fingerPinching[i] = _rawFingerPinching[i];
+        }
+    }
+
+    private static PicoPinchFinger ToPicoPinchFinger(int fingerIndex)
+    {
+        switch (fingerIndex)
+        {
+            case 0:
+                return PicoPinchFinger.Index;
+            case 1:
+                return PicoPinchFinger.Middle;
+            case 2:
+                return PicoPinchFinger.Ring;
+            default:
+                return PicoPinchFinger.Little;
+        }
+    }
+
+    private void InvokeFingerPinchStarted(PicoPinchFinger finger, HandPointerTarget target)
+    {
+        switch (finger)
+        {
+            case PicoPinchFinger.Index:
+                IndexPinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Middle:
+                MiddlePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Ring:
+                RingPinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Little:
+                LittlePinchStarted?.Invoke(target);
+                break;
+        }
+    }
+
+    private void InvokeRawFingerPinchStarted(PicoPinchFinger finger, HandPointerTarget target)
+    {
+        switch (finger)
+        {
+            case PicoPinchFinger.Index:
+                RawIndexPinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Middle:
+                RawMiddlePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Ring:
+                RawRingPinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Little:
+                RawLittlePinchStarted?.Invoke(target);
+                break;
+        }
+    }
+
+    private void InvokeFingerDoublePinchStarted(PicoPinchFinger finger, HandPointerTarget target)
+    {
+        switch (finger)
+        {
+            case PicoPinchFinger.Index:
+                IndexDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Middle:
+                MiddleDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Ring:
+                RingDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Little:
+                LittleDoublePinchStarted?.Invoke(target);
+                break;
+        }
+    }
+
+    private void InvokeRawFingerDoublePinchStarted(PicoPinchFinger finger, HandPointerTarget target)
+    {
+        switch (finger)
+        {
+            case PicoPinchFinger.Index:
+                RawIndexDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Middle:
+                RawMiddleDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Ring:
+                RawRingDoublePinchStarted?.Invoke(target);
+                break;
+            case PicoPinchFinger.Little:
+                RawLittleDoublePinchStarted?.Invoke(target);
+                break;
+        }
     }
 
     private void ReleaseContactIfNeeded()

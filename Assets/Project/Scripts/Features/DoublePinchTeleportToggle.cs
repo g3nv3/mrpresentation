@@ -40,7 +40,7 @@ public sealed class DoublePinchTeleportToggle : MonoBehaviour
     {
         if (_handInput != null)
         {
-            _handInput.DoublePinchStarted -= HandleDoublePinchStarted;
+            _handInput.MiddleDoublePinchStarted -= HandleDoublePinchStarted;
         }
     }
 
@@ -53,14 +53,14 @@ public sealed class DoublePinchTeleportToggle : MonoBehaviour
 
         if (_handInput != null)
         {
-            _handInput.DoublePinchStarted -= HandleDoublePinchStarted;
+            _handInput.MiddleDoublePinchStarted -= HandleDoublePinchStarted;
         }
 
         _handInput = handInput;
 
         if (_handInput != null)
         {
-            _handInput.DoublePinchStarted += HandleDoublePinchStarted;
+            _handInput.MiddleDoublePinchStarted += HandleDoublePinchStarted;
         }
     }
 
