@@ -46,6 +46,8 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
     public bool IsRouteVisible => routePresenter != null && routePresenter.IsVisible;
     public bool IsRequesting => _isRequesting;
     public bool HasGeographicNorthAlignment => routePresenter != null && routePresenter.HasGeographicNorthAlignment;
+    public float GeographicNorthYawDegrees => routePresenter != null ? routePresenter.GeographicNorthYawDegrees : 0f;
+    public Transform AnchorTransform => routePresenter != null ? routePresenter.Anchor : transform;
     private IYandexRouteClient ActiveRouteClient => openRouteServiceClient != null ? openRouteServiceClient : routeClient;
     private YandexRouteTravelMode ActiveDefaultMode => openRouteServiceClient != null
         ? openRouteServiceClient.DefaultMode
@@ -200,6 +202,11 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
 
             if (result.Succeeded)
             {
+                if (request.Waypoints != null && request.Waypoints.Count > 0)
+                {
+                    routePresenter.SetGeographicOrigin(request.Waypoints[0]);
+                }
+
                 routePresenter.TryShowRoute(result.Route);
             }
             else if (!keepVisibleRouteOnFailure)

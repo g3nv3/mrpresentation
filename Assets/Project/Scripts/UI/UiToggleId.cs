@@ -4,6 +4,7 @@ namespace Project.Scripts.UI
     {
         QrScanner = 0,
         SpatialMesh = 1,
-        MiniMap = 2
+        MiniMap = 2,
+        HandRaySurfaceProbe = 3
     }
 }

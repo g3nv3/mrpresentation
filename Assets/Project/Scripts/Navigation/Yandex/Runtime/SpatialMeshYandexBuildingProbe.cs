@@ -38,6 +38,11 @@ public sealed class SpatialMeshYandexBuildingProbe : MonoBehaviour, ISpatialMesh
     [Tooltip("Использует только поворот якоря по Y, игнорируя наклон вперед/назад и крен.")]
     [SerializeField] private bool yawOnlyRotation = true;
 
+    [Tooltip("Если включено, использует явно заданный yaw географического севера вместо rotation Geo Anchor Transform.")]
+    [SerializeField] private bool useExplicitGeographicNorthYaw;
+
+    [SerializeField] private float geographicNorthYawDegrees;
+
     private void Awake()
     {
         if (geocoderClient == null)
@@ -62,14 +67,36 @@ public sealed class SpatialMeshYandexBuildingProbe : MonoBehaviour, ISpatialMesh
         geoAnchorCoordinate = anchorCoordinate;
     }
 
+    public void SetGeographicNorthYaw(float yawDegrees)
+    {
+        geographicNorthYawDegrees = yawDegrees;
+        useExplicitGeographicNorthYaw = true;
+    }
+
     public Coroutine Probe(Vector3 origin, Vector3 direction, Action<SpatialMeshYandexProbeResult> completed)
     {
         return StartCoroutine(ProbeRoutine(origin, direction, completed));
     }
 
+    public Coroutine ProbeHit(RaycastHit hit, Action<SpatialMeshYandexProbeResult> completed)
+    {
+        return StartCoroutine(ProbeHitRoutine(hit, completed));
+    }
+
     public IEnumerator ProbeRoutine(Vector3 origin, Vector3 direction, Action<SpatialMeshYandexProbeResult> completed)
     {
         if (!TryRaycastSpatialMesh(origin, direction, out var hit))
+        {
+            completed?.Invoke(SpatialMeshYandexProbeResult.NoHit());
+            yield break;
+        }
+
+        yield return ProbeHitRoutine(hit, completed);
+    }
+
+    public IEnumerator ProbeHitRoutine(RaycastHit hit, Action<SpatialMeshYandexProbeResult> completed)
+    {
+        if (hit.collider == null || requireMeshCollider && !(hit.collider is MeshCollider))
         {
             completed?.Invoke(SpatialMeshYandexProbeResult.NoHit());
             yield break;
@@ -136,6 +163,11 @@ public sealed class SpatialMeshYandexBuildingProbe : MonoBehaviour, ISpatialMesh
         if (!rotateWithAnchor)
         {
             return Quaternion.identity;
+        }
+
+        if (useExplicitGeographicNorthYaw)
+        {
+            return Quaternion.Euler(0f, geographicNorthYawDegrees, 0f);
         }
 
         if (!yawOnlyRotation)

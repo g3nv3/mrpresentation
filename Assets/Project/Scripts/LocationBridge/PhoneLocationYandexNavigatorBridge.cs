@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using UnityEngine;
 
@@ -17,6 +18,7 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
     [SerializeField, Min(0f)] private float maximumHeadingAccuracyDegrees = 45f;
 
     public PhoneLocationSample? LatestAppliedSample { get; private set; }
+    public event Action<PhoneLocationSample> LocationApplied;
 
     private GeoCoordinate? _lastRouteCoordinate;
     private float _lastRebuildTime = float.NegativeInfinity;
@@ -85,6 +87,7 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
             }
         }
 
+        LocationApplied?.Invoke(sample);
         return true;
     }
 

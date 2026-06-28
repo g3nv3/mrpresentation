@@ -142,7 +142,9 @@ public interface IYandexGeocoderClient
 public interface ISpatialMeshYandexBuildingProbe
 {
     Coroutine Probe(Vector3 origin, Vector3 direction, Action<SpatialMeshYandexProbeResult> completed);
+    Coroutine ProbeHit(RaycastHit hit, Action<SpatialMeshYandexProbeResult> completed);
     IEnumerator ProbeRoutine(Vector3 origin, Vector3 direction, Action<SpatialMeshYandexProbeResult> completed);
+    IEnumerator ProbeHitRoutine(RaycastHit hit, Action<SpatialMeshYandexProbeResult> completed);
     bool TryRaycastSpatialMesh(Vector3 origin, Vector3 direction, out RaycastHit hit);
     GeoCoordinate WorldToGeoCoordinate(Vector3 worldPosition);
 }

@@ -5,6 +5,8 @@ using UnityEngine.Rendering;
 [DisallowMultipleComponent]
 public sealed class RoutePathView : MonoBehaviour
 {
+    private readonly List<Vector3> _relativeShadowPoints = new List<Vector3>();
+
     [Tooltip("Основная линия маршрута.")]
     [SerializeField] private RouteLineRendererView pathLine;
 
@@ -50,6 +52,27 @@ public sealed class RoutePathView : MonoBehaviour
 
     public bool Show(IReadOnlyList<Vector3> points, bool usePointProjector, bool usePointOffset)
     {
+        return ShowInternal(points, usePointProjector, usePointOffset, false, Vector3.zero);
+    }
+
+    public bool ShowWithRelativeShadow(
+        IReadOnlyList<Vector3> points,
+        bool usePointProjector,
+        bool usePointOffset,
+        Vector3 shadowOffset,
+        bool showEndpointMarker = true)
+    {
+        return ShowInternal(points, usePointProjector, usePointOffset, true, shadowOffset, showEndpointMarker);
+    }
+
+    private bool ShowInternal(
+        IReadOnlyList<Vector3> points,
+        bool usePointProjector,
+        bool usePointOffset,
+        bool useRelativeShadow,
+        Vector3 relativeShadowOffset,
+        bool showEndpointMarker = true)
+    {
         EnsureDependencies();
 
         if (points == null || points.Count < 2)
@@ -66,15 +89,45 @@ public sealed class RoutePathView : MonoBehaviour
 
         if (floorShadowLine != null)
         {
-            floorShadowLine.Show(points, usePointProjector, usePointOffset);
+            if (useRelativeShadow)
+            {
+                ShowRelativeShadow(relativeShadowOffset);
+            }
+            else
+            {
+                floorShadowLine.Show(points, usePointProjector, usePointOffset);
+            }
         }
 
-        if (endpointMarker != null)
+        if (endpointMarker != null && showEndpointMarker)
         {
             endpointMarker.Show(points[points.Count - 1], usePointProjector, usePointOffset);
         }
+        else if (endpointMarker != null)
+        {
+            endpointMarker.Hide();
+        }
 
         return true;
+    }
+
+    private void ShowRelativeShadow(Vector3 shadowOffset)
+    {
+        var renderer = pathLine != null ? pathLine.Renderer : null;
+        if (renderer == null || renderer.positionCount < 2)
+        {
+            floorShadowLine.Hide();
+            return;
+        }
+
+        _relativeShadowPoints.Clear();
+        for (var i = 0; i < renderer.positionCount; i++)
+        {
+            _relativeShadowPoints.Add(renderer.GetPosition(i) + shadowOffset);
+        }
+
+        // Позиции уже взяты у итоговой линии, поэтому повторная проекция и собственный offset тени не нужны.
+        floorShadowLine.Show(_relativeShadowPoints, false, false);
     }
 
     public void Hide()

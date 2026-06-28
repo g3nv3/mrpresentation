@@ -103,6 +103,11 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
             return false;
         }
 
+        if (headingApplied && locationBridge != null)
+        {
+            locationBridge.ApplyLatestLocation();
+        }
+
         LatestAppliedDestination = destination;
         navigator.ShowRouteTo(destinationCoordinate);
         return true;

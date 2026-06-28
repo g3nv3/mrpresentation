@@ -7,6 +7,7 @@ public interface IPicoHandInput
 {
     bool IsTracked { get; }
     bool PinchHeld { get; }
+    HandPointerTarget CurrentTarget { get; }
     Vector3 ContactPosition { get; }
     Quaternion ContactRotation { get; }
     bool TryGetCurrentContact(out HandContactTarget target);
