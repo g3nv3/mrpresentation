@@ -251,6 +251,12 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
             AddProjectedPoint(_sourceLocalRoutePoints, origin, routePoints[i]);
         }
 
+        var visualStartOffset = _sourceLocalRoutePoints[0];
+        for (var i = 0; i < _sourceLocalRoutePoints.Count; i++)
+        {
+            _sourceLocalRoutePoints[i] -= visualStartOffset;
+        }
+
         _localRouteEndpoint = _sourceLocalRoutePoints[_sourceLocalRoutePoints.Count - 1];
 
         var sourceForRendering = (IReadOnlyList<Vector3>)_sourceLocalRoutePoints;

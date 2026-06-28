@@ -202,9 +202,11 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
 
             if (result.Succeeded)
             {
-                if (request.Waypoints != null && request.Waypoints.Count > 0)
+                if (result.Route?.Points != null &&
+                    result.Route.Points.Count > 0 &&
+                    result.Route.Points[0].IsValid)
                 {
-                    routePresenter.SetGeographicOrigin(request.Waypoints[0]);
+                    routePresenter.SetGeographicOrigin(result.Route.Points[0]);
                 }
 
                 routePresenter.TryShowRoute(result.Route);
