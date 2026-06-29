@@ -7,6 +7,7 @@ public sealed class HandRaySurfaceProbeController : MonoBehaviour, IUiToggleStat
 {
     [SerializeField] private PinchSurfaceFeedbackView feedbackView;
     [SerializeField] private SpatialMeshYandexBuildingProbe yandexBuildingProbe;
+    [SerializeField] private GigaChatSurfaceGuideController gigaChatSurfaceGuide;
     [SerializeField] private string targetTag = "MRMesh";
     [SerializeField] private float surfaceOffset = 0.03f;
     [SerializeField] private bool active = false;
@@ -105,11 +106,14 @@ public sealed class HandRaySurfaceProbeController : MonoBehaviour, IUiToggleStat
             return;
         }
 
+        gigaChatSurfaceGuide?.ShowPendingAtHit(target.Hit);
         yandexBuildingProbe.ProbeHit(target.Hit, HandleYandexProbeCompleted);
     }
 
     private void HandleYandexProbeCompleted(SpatialMeshYandexProbeResult result)
     {
+        gigaChatSurfaceGuide?.HandleYandexProbeResult(result);
+
         if (!logYandexResult)
         {
             return;

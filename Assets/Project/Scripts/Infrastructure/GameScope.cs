@@ -18,6 +18,8 @@ namespace Project.Scripts
         [SerializeField] private OpenRouteServiceClient openRouteServiceClient;
         [Tooltip("Необязательный клиент Yandex Geocoder API, регистрируется как IYandexGeocoderClient.")]
         [SerializeField] private YandexGeocoderClient yandexGeocoderClient;
+        [Tooltip("Необязательный клиент GigaChat API, регистрируется как IGigaChatClient.")]
+        [SerializeField] private GigaChatClient gigaChatClient;
         [Tooltip("Необязательный presenter маршрута в шлеме, регистрируется как IYandexRoutePresenter.")]
         [SerializeField] private YandexHelmetRoutePresenter yandexHelmetRoutePresenter;
         [Tooltip("Необязательный фасад маршрутизации, регистрируется как IYandexHelmetNavigator.")]
@@ -94,6 +96,12 @@ namespace Project.Scripts
             {
                 builder.RegisterComponent(yandexGeocoderClient)
                     .As<IYandexGeocoderClient>();
+            }
+
+            if (gigaChatClient != null)
+            {
+                builder.RegisterComponent(gigaChatClient)
+                    .As<IGigaChatClient>();
             }
 
             if (yandexHelmetRoutePresenter != null)
