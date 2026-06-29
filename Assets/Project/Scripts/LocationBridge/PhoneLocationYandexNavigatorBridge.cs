@@ -8,6 +8,7 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
     [Header("Dependencies")]
     [SerializeField] private PhoneLocationUdpReceiver receiver;
     [SerializeField] private YandexHelmetNavigator navigator;
+    [SerializeField] private PhoneHelmetYawCalibration yawCalibration;
 
     [Header("Behavior")]
     [SerializeField] private bool applyEveryReceivedLocation = true;
@@ -33,6 +34,11 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
         if (navigator == null)
         {
             navigator = GetComponent<YandexHelmetNavigator>();
+        }
+
+        if (yawCalibration == null)
+        {
+            yawCalibration = GetComponent<PhoneHelmetYawCalibration>();
         }
     }
 
@@ -93,6 +99,11 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
 
     public bool TryAlignGeographicNorthFromLatestCourse()
     {
+        if (yawCalibration != null)
+        {
+            return yawCalibration.HasCalibration && yawCalibration.ApplyCalibrationToNavigator();
+        }
+
         if (!LatestAppliedSample.HasValue)
         {
             return false;
@@ -107,6 +118,11 @@ public sealed class PhoneLocationYandexNavigatorBridge : MonoBehaviour
 
     public bool TryAlignGeographicNorthFromLatestHeading(bool force = false)
     {
+        if (yawCalibration != null)
+        {
+            return yawCalibration.HasCalibration && yawCalibration.ApplyCalibrationToNavigator();
+        }
+
         if (!LatestAppliedSample.HasValue || navigator == null)
         {
             return false;

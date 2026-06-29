@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>GigaChatSDK</id>
+    <version>1.1.0</version>
+    <title>GigaChatSDK</title>
+    <authors>GigaChatSDK</authors>
+    <projectUrl>https://github.com/likhoded/GigaChatSDK</projectUrl>
+    <description>About
+Unofficial .NET Library for working with Giga Chat AI by Sber/ Неофициальная .NET библиотека для работы с GigaChat AI от Сбера</description>
+    <tags>GigaChat</tags>
+    <repository type="git" url="https://github.com/likhoded/GigaChatSDK" commit="6fa78fad4f5f5214a840e4a2053ed2b366137b0e" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="System.Net.Http.Json" version="8.0.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

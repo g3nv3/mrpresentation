@@ -477,7 +477,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4652a93f58bc1ae41ba6c17439826d8e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Scripts.UI.UiToggleButtonBinder
-  toggleId: 0
+  toggleStateSource: {fileID: 0}
   pressButton: {fileID: 7598486681195279218}
   stateIcon: {fileID: 3982678231929980251}
   toggleOnPress: 1

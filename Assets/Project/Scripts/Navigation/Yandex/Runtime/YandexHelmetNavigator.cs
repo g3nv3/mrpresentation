@@ -127,6 +127,17 @@ public sealed class YandexHelmetNavigator : MonoBehaviour, IYandexHelmetNavigato
         return routePresenter != null && routePresenter.TryAlignGeographicNorthToHeading(headingDegrees);
     }
 
+    public bool SetGeographicNorthYaw(float yawDegrees)
+    {
+        if (routePresenter == null)
+        {
+            return false;
+        }
+
+        routePresenter.SetGeographicNorthYaw(yawDegrees);
+        return true;
+    }
+
     public Coroutine ShowRoute(double startLatitude, double startLongitude, double finishLatitude, double finishLongitude)
     {
         return ShowRoute(

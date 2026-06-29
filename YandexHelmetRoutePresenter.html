@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YandexHelmetRoutePresenter - разбор класса</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-2: #edf2ee;
+      --ink: #202426;
+      --muted: #5f696f;
+      --line: #d5ddd8;
+      --green: #2d8a63;
+      --teal: #207d8a;
+      --red: #b75246;
+      --yellow: #d29b2f;
+      --blue: #3f6fae;
+      --shadow: 0 16px 40px rgba(35, 47, 42, 0.12);
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    header {
+      background: #22302d;
+      color: #f7fbf8;
+      border-bottom: 5px solid var(--green);
+    }
+
+    .wrap {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+      gap: 32px;
+      align-items: center;
+      min-height: 360px;
+      padding: 48px 0 36px;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.15;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 850px;
+      font-size: clamp(34px, 5vw, 58px);
+      font-weight: 780;
+    }
+
+    h2 {
+      font-size: clamp(24px, 3vw, 34px);
+      margin-bottom: 18px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .lead {
+      max-width: 760px;
+      color: #c9d6d0;
+      font-size: 18px;
+      margin: 18px 0 0;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .pill {
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+      color: #f7fbf8;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 13px;
+    }
+
+    .mini-map {
+      min-height: 260px;
+      background: #17211f;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .mini-map svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    main {
+      padding: 34px 0 52px;
+    }
+
+    section {
+      margin-top: 38px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid.cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 8px 22px rgba(35, 47, 42, 0.06);
+    }
+
+    .card.compact {
+      padding: 14px 16px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    code {
+      background: #e8eeea;
+      border: 1px solid #d7dfda;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #1f2729;
+      color: #e8f3ef;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #394547;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      min-height: 132px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -9px;
+      width: 16px;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .step:last-child::after {
+      display: none;
+    }
+
+    .num {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      margin-bottom: 10px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e9efeb;
+      font-size: 13px;
+      color: #34403c;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 7px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+    }
+
+    .tab[aria-selected="true"] {
+      background: #22302d;
+      color: #fff;
+      border-color: #22302d;
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: grid;
+      gap: 14px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .dot.teal { background: var(--teal); }
+    .dot.red { background: var(--red); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.blue { background: var(--blue); }
+
+    .callout {
+      border-left: 5px solid var(--yellow);
+      background: #fff8e7;
+      padding: 14px 16px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .file-path {
+      display: inline-block;
+      margin-top: 10px;
+      color: #c9d6d0;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .top,
+      .grid.cols-2,
+      .grid.cols-3,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .step::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <div>
+        <h1>YandexHelmetRoutePresenter</h1>
+        <p class="lead">
+          Класс отвечает за последнюю милю Yandex-навигации: берет географические точки маршрута,
+          переводит их в Unity-координаты вокруг игрока или шлема, упрощает линию и передает ее в общий
+          визуальный компонент <code>RoutePathView</code>.
+        </p>
+        <div class="pill-row">
+          <span class="pill">MonoBehaviour</span>
+          <span class="pill">IYandexRoutePresenter</span>
+          <span class="pill">GeoCoordinate -> Vector3</span>
+          <span class="pill">RoutePathView facade</span>
+        </div>
+        <span class="file-path">Assets/Project/Scripts/Navigation/Yandex/Presentation/YandexHelmetRoutePresenter.cs</span>
+      </div>
+      <div class="mini-map" aria-label="Схема маршрута в пространстве шлема">
+        <svg viewBox="0 0 420 300" role="img">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L7,3 z" fill="#79c99e"></path>
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="420" height="300" rx="8" fill="#17211f"></rect>
+          <g stroke="#2e3c39" stroke-width="1">
+            <path d="M40 40 H380 M40 90 H380 M40 140 H380 M40 190 H380 M40 240 H380"></path>
+            <path d="M70 25 V270 M140 25 V270 M210 25 V270 M280 25 V270 M350 25 V270"></path>
+          </g>
+          <path d="M86 226 C120 185, 152 196, 174 157 S246 105, 279 122 S327 128, 354 70"
+                fill="none" stroke="#79c99e" stroke-width="10" stroke-linecap="round"></path>
+          <path d="M86 226 C120 185, 152 196, 174 157 S246 105, 279 122 S327 128, 354 70"
+                fill="none" stroke="#143f31" stroke-width="17" stroke-linecap="round" opacity="0.35"></path>
+          <circle cx="86" cy="226" r="14" fill="#d29b2f"></circle>
+          <circle cx="354" cy="70" r="14" fill="#b75246"></circle>
+          <path d="M82 250 L82 218" stroke="#f7fbf8" stroke-width="3" marker-end="url(#arrow)"></path>
+          <text x="102" y="254" fill="#f7fbf8" font-size="14">anchor + routeOffset</text>
+          <text x="260" y="44" fill="#f7fbf8" font-size="14">endpoint</text>
+          <text x="40" y="36" fill="#9fb2aa" font-size="13">Unity X/Z plane</text>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Роль В Системе</h2>
+      <div class="flow">
+        <div class="step">
+          <span class="num">1</span>
+          <h3>Route client</h3>
+          <p class="muted">Запрашивает маршрут у Yandex Maps API или OpenRouteService.</p>
+        </div>
+        <div class="step">
+          <span class="num">2</span>
+          <h3>Navigator</h3>
+          <p class="muted"><code>YandexHelmetNavigator</code> хранит текущую координату и вызывает presenter.</p>
+        </div>
+        <div class="step">
+          <span class="num">3</span>
+          <h3>Presenter</h3>
+          <p class="muted">Проецирует <code>GeoCoordinate</code> в локальные точки маршрута.</p>
+        </div>
+        <div class="step">
+          <span class="num">4</span>
+          <h3>RoutePathView</h3>
+          <p class="muted">Получает готовые world-space точки и управляет линией, тенью и marker.</p>
+        </div>
+        <div class="step">
+          <span class="num">5</span>
+          <h3>LineRenderer</h3>
+          <p class="muted">Показывает маршрут в сцене шлема Pico.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid cols-3">
+      <div class="card">
+        <h3>Что класс делает</h3>
+        <p>Переводит широту и долготу в смещения в метрах, нормализует начало маршрута в ноль, применяет масштаб, offset и поворот, затем рисует линию.</p>
+      </div>
+      <div class="card">
+        <h3>Чего класс не делает</h3>
+        <p>Не отправляет HTTP-запросы, не парсит JSON, не строит NavMesh и не выбирает destination. Это делает <code>YandexHelmetNavigator</code> и route clients.</p>
+      </div>
+      <div class="card">
+        <h3>Главная зависимость</h3>
+        <p><code>RoutePathView</code>. Если он не назначен в Inspector, presenter пробует найти его через <code>GetComponent&lt;RoutePathView&gt;()</code>.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Основной Алгоритм</h2>
+      <div class="tabs" role="tablist" aria-label="Разбор алгоритма">
+        <button class="tab" role="tab" aria-selected="true" data-panel="build">TryBuildLocalRoute</button>
+        <button class="tab" role="tab" aria-selected="false" data-panel="draw">DrawLocalRoute</button>
+        <button class="tab" role="tab" aria-selected="false" data-panel="align">North Alignment</button>
+        <button class="tab" role="tab" aria-selected="false" data-panel="disable">DisableRoute</button>
+      </div>
+
+      <div id="build" class="panel active">
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Как строятся локальные точки</h3>
+            <p>
+              Метод берет список <code>GeoCoordinate</code>, выбирает origin: либо явно заданный через
+              <code>SetGeographicOrigin</code>, либо первую точку маршрута. Каждая точка переводится в east/north
+              offset через <code>GeoCoordinateUtility.GetMetersOffset</code>, после чего east становится Unity X,
+              north становится Unity Z.
+            </p>
+            <p>
+              Затем из всех точек вычитается первая рассчитанная точка. Поэтому маршрут визуально начинается от
+              <code>routeOffset</code>, а не от абсолютного положения географического origin.
+            </p>
+          </div>
+          <pre>origin = _geographicOrigin ?? routePoints[0]
+metersOffset = GeoCoordinateUtility.GetMetersOffset(origin, point)
+localPoint = new Vector3(east * scale, 0, north * scale)
+
+visualStartOffset = sourceLocalRoutePoints[0]
+sourceLocalRoutePoints[i] -= visualStartOffset</pre>
+        </div>
+      </div>
+
+      <div id="draw" class="panel">
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Как точки попадают в сцену</h3>
+            <p>
+              <code>DrawLocalRoute</code> берет anchor: <code>playerTransform</code>, если он назначен, иначе
+              transform самого компонента. Дальше вычисляется rotation и origin. Каждая локальная точка становится
+              world-space точкой: <code>origin + rotation * localPoint</code>.
+            </p>
+            <p>
+              После этого массив передается в <code>RoutePathView.ShowWithRelativeShadow</code>. Именно поэтому
+              Yandex-маршрут переиспользует общий renderer, тень и endpoint-маркер.
+            </p>
+          </div>
+          <pre>anchor = playerTransform ?? transform
+rotation = GetRouteRotation(anchor)
+origin = GetRouteOrigin(anchor, rotation)
+
+worldPoint = origin + rotation * localPoint
+pathView.ShowWithRelativeShadow(worldRoutePoints, ...)</pre>
+        </div>
+      </div>
+
+      <div id="align" class="panel">
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Зачем нужен geographicNorthYawDegrees</h3>
+            <p>
+              Географические точки приходят в системе east/north, где north соответствует направлению на север.
+              В Unity мировая ось +Z не обязана совпадать с реальным севером. Поле
+              <code>geographicNorthYawDegrees</code> задает поворот географического севера относительно Unity +Z.
+            </p>
+            <p>
+              <code>TryAlignGeographicNorthToHeading</code> вычисляет этот угол из текущего yaw игрока и известного
+              heading. После первого успешного course alignment повторные вызовы <code>TryAlignGeographicNorthToCourse</code>
+              больше не меняют ориентацию.
+            </p>
+          </div>
+          <pre>geographicNorthYawDegrees =
+    Mathf.DeltaAngle(0f, playerYaw - headingDegrees)
+
+GetGeographicNorthRotation() =
+    Quaternion.Euler(0, geographicNorthYawDegrees, 0)</pre>
+        </div>
+      </div>
+
+      <div id="disable" class="panel">
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Что очищается при выключении</h3>
+            <p>
+              <code>DisableRoute</code> сбрасывает текущий route, локальные и world-space списки, флаги endpoint и
+              truncation, затем скрывает <code>RoutePathView</code>. Это полный визуальный reset presenter-а.
+            </p>
+          </div>
+          <pre>_currentRoute = null
+_localRoutePoints.Clear()
+_visibleSourceLocalRoutePoints.Clear()
+_worldRoutePoints.Clear()
+_isVisibleRouteTruncated = false
+_hasWorldRouteEndpoint = false
+pathView?.Hide()</pre>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Поля Inspector</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Поле</th>
+            <th>Назначение</th>
+            <th>Практический смысл</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>playerTransform</code></td>
+            <td>Anchor, относительно которого показывается маршрут.</td>
+            <td>Обычно XR rig, camera или объект головы. Если пусто, используется transform presenter-а.</td>
+          </tr>
+          <tr>
+            <td><code>routeOffset</code></td>
+            <td>Локальный сдвиг начала линии от игрока.</td>
+            <td>По умолчанию линия начинается ниже и впереди игрока: <code>(0, -0.35, 1.2)</code>.</td>
+          </tr>
+          <tr>
+            <td><code>followPlayerTransform</code></td>
+            <td>Пересчитывает world-space точки в <code>LateUpdate</code>.</td>
+            <td>Нужно, если маршрут должен оставаться привязанным к движущемуся игроку.</td>
+          </tr>
+          <tr>
+            <td><code>rotateWithPlayer</code></td>
+            <td>Поворачивает маршрут вместе с anchor.</td>
+            <td>Если выключено, линия ориентируется по <code>geographicNorthYawDegrees</code>, а не по голове.</td>
+          </tr>
+          <tr>
+            <td><code>yawOnlyRotation</code></td>
+            <td>Берет только поворот по Y.</td>
+            <td>Сохраняет линию горизонтальной и игнорирует pitch/roll шлема.</td>
+          </tr>
+          <tr>
+            <td><code>geographicNorthYawDegrees</code></td>
+            <td>Поворот реального севера в Unity.</td>
+            <td>Калибрует географический маршрут относительно сцены.</td>
+          </tr>
+          <tr>
+            <td><code>metersToUnityScale</code></td>
+            <td>Масштаб перевода метров в Unity units.</td>
+            <td>Для Pico spatial mesh обычно <code>1</code>.</td>
+          </tr>
+          <tr>
+            <td><code>maxRenderedPoints</code></td>
+            <td>Лимит точек, передаваемых renderer-у.</td>
+            <td>Защищает LineRenderer и сцену от слишком плотной полилинии.</td>
+          </tr>
+          <tr>
+            <td><code>drawRoutePrefixWhenPointBudgetExceeded</code></td>
+            <td>При превышении лимита рисует только начало маршрута.</td>
+            <td>Если выключить, класс пытается упростить весь маршрут до лимита.</td>
+          </tr>
+          <tr>
+            <td><code>simplificationToleranceMeters</code></td>
+            <td>Допуск упрощения линии.</td>
+            <td>Чем выше значение, тем меньше точек и грубее форма маршрута.</td>
+          </tr>
+          <tr>
+            <td><code>pathView</code></td>
+            <td>Визуальный фасад линии маршрута.</td>
+            <td>Управляет <code>RouteLineRendererView</code>, тенью и endpoint-маркером.</td>
+          </tr>
+          <tr>
+            <td><code>usePathViewPointProjector</code></td>
+            <td>Разрешает <code>RoutePathView</code> проецировать точки.</td>
+            <td>Для Yandex обычно выключено, чтобы линия не ложилась на MRMesh.</td>
+          </tr>
+          <tr>
+            <td><code>usePathViewPointOffset</code></td>
+            <td>Разрешает offset внутри <code>RoutePathView</code>.</td>
+            <td>Для Yandex обычно выключено, чтобы общий NavMesh-offset не поднял линию к голове.</td>
+          </tr>
+          <tr>
+            <td><code>shadowOffsetRelativeToRoute</code></td>
+            <td>Смещение тени относительно итоговой линии.</td>
+            <td>Позволяет получить подложку ниже маршрута без повторной проекции.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid cols-2">
+      <div class="card">
+        <h2>Публичный API</h2>
+        <p><code>TryShowRoute(YandexRouteData)</code> и <code>TryShowRoute(IReadOnlyList&lt;GeoCoordinate&gt;)</code> строят локальную линию и пытаются ее отрисовать. Возвращают <code>false</code>, если данных мало или нет renderer-а.</p>
+        <p><code>ShowRoute</code> и <code>BuildPath</code> являются удобными обертками над <code>TryShowRoute</code>.</p>
+        <p><code>SetGeographicOrigin</code> фиксирует origin для преобразования координат. Navigator вызывает его по первой точке полученного маршрута.</p>
+        <p><code>IsPlayerWithinEndpointDistance</code> проверяет расстояние игрока до endpoint в плоскости X/Z и используется navigator-ом для завершения маршрута.</p>
+      </div>
+      <div class="card">
+        <h2>Внутреннее Состояние</h2>
+        <p><code>_sourceLocalRoutePoints</code> хранит все исходные локальные точки после гео-проекции.</p>
+        <p><code>_visibleSourceLocalRoutePoints</code> используется только когда включен режим рисования prefix при превышении лимита.</p>
+        <p><code>_localRoutePoints</code> содержит уже упрощенную полилинию, готовую к повороту и размещению около anchor.</p>
+        <p><code>_worldRoutePoints</code> содержит итоговые точки для <code>RoutePathView</code>.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Упрощение И Лимиты</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Алгоритм</h3>
+          <p>
+            <code>SimplifyRoute</code> реализует вариант Ramer-Douglas-Peucker: сохраняет первую и последнюю точку,
+            ищет самую далекую точку от сегмента, рекурсивно делит диапазоны через stack и оставляет только точки,
+            отклонение которых больше tolerance.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Поведение при слишком длинном маршруте</h3>
+          <p>
+            Если <code>drawRoutePrefixWhenPointBudgetExceeded</code> включен и исходных точек больше
+            <code>maxRenderedPoints</code>, рисуется только начало маршрута. В этом случае endpoint-маркер скрывается,
+            потому что видимая последняя точка уже не является настоящим финишем.
+          </p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top: 16px;">
+        Важная деталь: даже если визуальная линия обрезана, <code>_localRouteEndpoint</code> хранит настоящий endpoint.
+        Поэтому <code>IsPlayerWithinEndpointDistance</code> сравнивает игрока с реальным финишем, а не с концом видимого prefix.
+      </div>
+    </section>
+
+    <section>
+      <h2>Поворот И Origin</h2>
+      <div class="grid cols-3">
+        <div class="card compact">
+          <h3><code>rotateWithPlayer = false</code></h3>
+          <p class="muted">Origin сдвигается по yaw игрока, но сама линия повернута по географическому северу.</p>
+        </div>
+        <div class="card compact">
+          <h3><code>rotateWithPlayer = true</code>, yaw only</h3>
+          <p class="muted">Origin и линия используют только yaw anchor, поэтому линия остается горизонтальной.</p>
+        </div>
+        <div class="card compact">
+          <h3><code>yawOnlyRotation = false</code></h3>
+          <p class="muted">Используется полный <code>anchor.rotation</code> и <code>anchor.TransformPoint(routeOffset)</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Минимальный Сценарий Использования</h2>
+      <pre>var presenter = GetComponent&lt;YandexHelmetRoutePresenter&gt;();
+
+presenter.SetPlayerTransform(xrCameraTransform);
+presenter.SetRouteOffset(new Vector3(0f, -0.35f, 1.2f));
+presenter.TryAlignGeographicNorthToHeading(deviceHeading);
+
+presenter.TryShowRoute(routeData);</pre>
+      <div class="legend">
+        <span><i class="dot"></i>route points</span>
+        <span><i class="dot teal"></i>anchor transform</span>
+        <span><i class="dot yellow"></i>route offset</span>
+        <span><i class="dot red"></i>endpoint</span>
+        <span><i class="dot blue"></i>RoutePathView</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const tabs = document.querySelectorAll(".tab");
+    const panels = document.querySelectorAll(".panel");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const id = tab.dataset.panel;
+
+        tabs.forEach((item) => {
+          item.setAttribute("aria-selected", item === tab ? "true" : "false");
+        });
+
+        panels.forEach((panel) => {
+          panel.classList.toggle("active", panel.id === id);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

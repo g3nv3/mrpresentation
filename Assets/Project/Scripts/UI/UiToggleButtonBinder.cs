@@ -1,6 +1,4 @@
 using UnityEngine;
-using VContainer;
-using VContainer.Unity;
 
 namespace Project.Scripts.UI
 {
@@ -8,24 +6,12 @@ namespace Project.Scripts.UI
     [AddComponentMenu("Project/UI/UI Toggle Button Binder")]
     public sealed class UiToggleButtonBinder : MonoBehaviour
     {
-        [SerializeField] private UiToggleId toggleId;
+        [SerializeField] private MonoBehaviour toggleStateSource;
         [SerializeField] private UiPressButton pressButton;
         [SerializeField] private UiToggleStateIcon stateIcon;
         [SerializeField] private bool toggleOnPress = true;
 
-        private IObjectResolver resolver;
         private IUiToggleState state;
-
-        [Inject]
-        public void Construct(IObjectResolver injectedResolver)
-        {
-            resolver = injectedResolver;
-
-            if (isActiveAndEnabled)
-            {
-                Bind();
-            }
-        }
 
         private void Reset()
         {
@@ -56,24 +42,12 @@ namespace Project.Scripts.UI
         private void OnValidate()
         {
             EnsureReferences();
+            ValidateToggleStateSource();
         }
 
         public void Bind()
         {
-            resolver ??= LifetimeScope.Find<LifetimeScope>()?.Container;
-
-            if (resolver == null)
-            {
-                return;
-            }
-
-            if (!resolver.TryResolve<IUiToggleState>(out var resolvedState, toggleId))
-            {
-                Debug.LogError($"UI toggle state '{toggleId}' is not registered.", this);
-                return;
-            }
-
-            Bind(resolvedState);
+            Bind(ResolveToggleStateSource());
         }
 
         public void Bind(IUiToggleState newState)
@@ -107,6 +81,35 @@ namespace Project.Scripts.UI
             {
                 stateIcon = GetComponentInChildren<UiToggleStateIcon>(true);
             }
+        }
+
+        private IUiToggleState ResolveToggleStateSource()
+        {
+            if (toggleStateSource == null)
+            {
+                Debug.LogError($"{nameof(UiToggleButtonBinder)} requires a component implementing {nameof(IUiToggleState)}.", this);
+                return null;
+            }
+
+            if (toggleStateSource is IUiToggleState toggleState)
+            {
+                return toggleState;
+            }
+
+            Debug.LogError(
+                $"{toggleStateSource.GetType().Name} does not implement {nameof(IUiToggleState)}.",
+                toggleStateSource);
+            return null;
+        }
+
+        private void ValidateToggleStateSource()
+        {
+            if (toggleStateSource == null || toggleStateSource is IUiToggleState)
+            {
+                return;
+            }
+
+            toggleStateSource = null;
         }
 
         private void HandlePressed()

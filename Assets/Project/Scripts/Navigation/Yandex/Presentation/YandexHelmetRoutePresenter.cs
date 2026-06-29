@@ -218,6 +218,13 @@ public sealed class YandexHelmetRoutePresenter : MonoBehaviour, IYandexRoutePres
         return true;
     }
 
+    public void SetGeographicNorthYaw(float yawDegrees)
+    {
+        geographicNorthYawDegrees = Mathf.DeltaAngle(0f, yawDegrees);
+        _hasGeographicNorthAlignment = true;
+        RebuildView();
+    }
+
     public Quaternion GetGeographicNorthRotation()
     {
         return Quaternion.Euler(0f, geographicNorthYawDegrees, 0f);
