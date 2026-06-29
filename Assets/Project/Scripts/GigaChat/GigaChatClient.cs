@@ -8,11 +8,16 @@ using LD.Sber.GigaChatSDK;
 using LD.Sber.GigaChatSDK.Interfaces;
 using LD.Sber.GigaChatSDK.Models;
 using UnityEngine;
+using UnityEngine.Networking;
 
 [DisallowMultipleComponent]
 public sealed class GigaChatClient : MonoBehaviour, IGigaChatClient
 {
     private const string DefaultModel = "GigaChat";
+    private const string DefaultAuthEndpoint = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
+    private const string DefaultModelsEndpoint = "https://gigachat.devices.sberbank.ru/api/v1/models";
+    private const string DefaultScope = "GIGACHAT_API_PERS";
+    private const string BasicPrefix = "Basic ";
 
     [Header("GigaChat SDK")]
     [Tooltip("Secret key / Authorization key из кабинета GigaChat API.")]
@@ -29,12 +34,33 @@ public sealed class GigaChatClient : MonoBehaviour, IGigaChatClient
         "Ты лаконичный VR-гид. Отвечай на русском языке: 2-4 предложения, без списков. " +
         "Если данных об объекте мало, честно скажи, что известно только по геокодеру.";
 
+    [Header("Models Debug")]
+    [SerializeField] private bool logModelsOnStart = true;
+    [SerializeField] private string authEndpoint = DefaultAuthEndpoint;
+    [SerializeField] private string modelsEndpoint = DefaultModelsEndpoint;
+    [SerializeField] private string scope = DefaultScope;
+    [SerializeField, Min(1f)] private float modelsRequestTimeoutSeconds = 20f;
+
     private IGigaChat _chat;
     private string _configuredSecretKey;
     private bool _configuredIsCommercial;
     private bool _configuredIgnoreTls;
     private bool _configuredSaveImage;
     private bool _hasToken;
+
+    private void Start()
+    {
+        if (logModelsOnStart)
+        {
+            StartCoroutine(LogAvailableModelsRoutine());
+        }
+    }
+
+    [ContextMenu("Log Available GigaChat Models")]
+    public void LogAvailableModels()
+    {
+        StartCoroutine(LogAvailableModelsRoutine());
+    }
 
     public void SetAuthorizationKey(string value)
     {
@@ -93,6 +119,87 @@ public sealed class GigaChatClient : MonoBehaviour, IGigaChatClient
         }
 
         completed?.Invoke(GigaChatSummaryResult.Success(summary, null, 0));
+    }
+
+    public IEnumerator LogAvailableModelsRoutine()
+    {
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            Debug.LogWarning("GigaChat models request skipped: secret key is empty.", this);
+            yield break;
+        }
+
+        string accessToken = null;
+        string tokenError = null;
+        yield return RequestAccessTokenRoutine(
+            token => accessToken = token,
+            error => tokenError = error);
+
+        if (!string.IsNullOrWhiteSpace(tokenError))
+        {
+            Debug.LogWarning("GigaChat models token request failed: " + tokenError, this);
+            yield break;
+        }
+
+        using (var request = UnityWebRequest.Get(GetEndpoint(modelsEndpoint, DefaultModelsEndpoint)))
+        {
+            request.timeout = Mathf.CeilToInt(modelsRequestTimeoutSeconds);
+            request.SetRequestHeader("Accept", "application/json");
+            request.SetRequestHeader("Authorization", "Bearer " + accessToken);
+            ApplyCertificateHandler(request);
+
+            yield return request.SendWebRequest();
+
+            var rawJson = request.downloadHandler != null ? request.downloadHandler.text : null;
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    "GigaChat models request failed: " + request.error + "\n" + rawJson,
+                    this);
+                yield break;
+            }
+
+            if (!TryParseModels(rawJson, out var lines, out var parseError))
+            {
+                Debug.LogWarning("GigaChat models parse failed: " + parseError + "\n" + rawJson, this);
+                yield break;
+            }
+
+            Debug.Log("Available GigaChat models:\n" + string.Join("\n", lines), this);
+        }
+    }
+
+    private IEnumerator RequestAccessTokenRoutine(Action<string> completed, Action<string> failed)
+    {
+        var requestBody = "scope=" + UnityWebRequest.EscapeURL(string.IsNullOrWhiteSpace(scope) ? DefaultScope : scope);
+        using (var request = new UnityWebRequest(GetEndpoint(authEndpoint, DefaultAuthEndpoint), UnityWebRequest.kHttpVerbPOST))
+        {
+            request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(requestBody));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.timeout = Mathf.CeilToInt(modelsRequestTimeoutSeconds);
+            request.SetRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            request.SetRequestHeader("Accept", "application/json");
+            request.SetRequestHeader("RqUID", Guid.NewGuid().ToString());
+            request.SetRequestHeader("Authorization", BuildBasicAuthorizationHeader());
+            ApplyCertificateHandler(request);
+
+            yield return request.SendWebRequest();
+
+            var rawJson = request.downloadHandler != null ? request.downloadHandler.text : null;
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                failed?.Invoke(request.error + "\n" + rawJson);
+                yield break;
+            }
+
+            if (!TryParseToken(rawJson, out var accessToken, out var parseError))
+            {
+                failed?.Invoke(parseError + "\n" + rawJson);
+                yield break;
+            }
+
+            completed?.Invoke(accessToken);
+        }
     }
 
     private void EnsureClient()
@@ -228,6 +335,120 @@ public sealed class GigaChatClient : MonoBehaviour, IGigaChatClient
 
         var choice = response.Choices.LastOrDefault();
         return choice != null && choice.Message != null ? choice.Message.Content : null;
+    }
+
+    private string BuildBasicAuthorizationHeader()
+    {
+        var value = secretKey.Trim();
+        if (value.StartsWith(BasicPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return BasicPrefix + value;
+    }
+
+    private static string GetEndpoint(string configured, string fallback)
+    {
+        return string.IsNullOrWhiteSpace(configured) ? fallback : configured.Trim();
+    }
+
+    private void ApplyCertificateHandler(UnityWebRequest request)
+    {
+        if (ignoreTls)
+        {
+            request.certificateHandler = new AcceptAnyCertificateHandler();
+        }
+    }
+
+    private static bool TryParseToken(string rawJson, out string accessToken, out string error)
+    {
+        accessToken = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(rawJson))
+        {
+            error = "GigaChat token response is empty.";
+            return false;
+        }
+
+        try
+        {
+            var response = JsonUtility.FromJson<GigaChatTokenResponseDto>(rawJson);
+            if (response == null || string.IsNullOrWhiteSpace(response.access_token))
+            {
+                error = "GigaChat token response does not contain access_token.";
+                return false;
+            }
+
+            accessToken = response.access_token;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = "Failed to parse GigaChat token response: " + exception.Message;
+            return false;
+        }
+    }
+
+    private static bool TryParseModels(string rawJson, out string[] lines, out string error)
+    {
+        lines = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(rawJson))
+        {
+            error = "GigaChat models response is empty.";
+            return false;
+        }
+
+        try
+        {
+            var response = JsonUtility.FromJson<GigaChatModelsResponseDto>(rawJson);
+            if (response == null || response.data == null)
+            {
+                error = "GigaChat models response does not contain data.";
+                return false;
+            }
+
+            lines = response.data
+                .Where(modelInfo => modelInfo != null)
+                .Select(modelInfo => modelInfo.id + " / " + modelInfo.owned_by)
+                .ToArray();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            error = "Failed to parse GigaChat models response: " + exception.Message;
+            return false;
+        }
+    }
+
+    private sealed class AcceptAnyCertificateHandler : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData)
+        {
+            return true;
+        }
+    }
+
+    [Serializable]
+    private sealed class GigaChatTokenResponseDto
+    {
+        public string access_token;
+    }
+
+    [Serializable]
+    private sealed class GigaChatModelsResponseDto
+    {
+        public GigaChatModelInfoDto[] data;
+    }
+
+    [Serializable]
+    private sealed class GigaChatModelInfoDto
+    {
+        public string id;
+        public string owned_by;
     }
 }
 

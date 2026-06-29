@@ -9,7 +9,9 @@ public sealed class PhoneHelmetYawCalibration : MonoBehaviour, IUiToggleState
     [Header("Dependencies")]
     [SerializeField] private PhoneLocationUdpReceiver receiver;
     [SerializeField] private YandexHelmetNavigator navigator;
+    [SerializeField] private SpatialMeshYandexBuildingProbe buildingProbe;
     [SerializeField] private Transform helmetTransform;
+    [SerializeField] private Transform geoAnchorTransform;
 
     [Header("UI")]
     [SerializeField] private TMP_Text statusLabel;
@@ -109,6 +111,7 @@ public sealed class PhoneHelmetYawCalibration : MonoBehaviour, IUiToggleState
         _hasCalibration = true;
 
         ApplyCalibrationToNavigator();
+        ApplyCalibrationToBuildingProbe(sample);
         SetStatusReason(null);
         CalibrationChanged?.Invoke(true);
         RefreshStatus();
@@ -136,6 +139,29 @@ public sealed class PhoneHelmetYawCalibration : MonoBehaviour, IUiToggleState
         }
 
         return navigator.SetGeographicNorthYaw(_geographicNorthYawDegrees);
+    }
+
+    public bool ApplyCalibrationToBuildingProbe()
+    {
+        if (!_hasLatestSample)
+        {
+            return false;
+        }
+
+        return ApplyCalibrationToBuildingProbe(_latestSample);
+    }
+
+    public bool ApplyCalibrationToBuildingProbe(PhoneLocationSample sample)
+    {
+        if (!_hasCalibration || buildingProbe == null || !sample.IsValid)
+        {
+            return false;
+        }
+
+        var anchor = geoAnchorTransform != null ? geoAnchorTransform : HelmetTransform;
+        buildingProbe.SetGeoAnchor(anchor, new GeoCoordinate(sample.Latitude, sample.Longitude));
+        buildingProbe.SetGeographicNorthYaw(_geographicNorthYawDegrees);
+        return true;
     }
 
     public bool TryGetUnityYawForPhoneHeading(float phoneHeadingDegrees, out float unityYawDegrees)
@@ -183,6 +209,11 @@ public sealed class PhoneHelmetYawCalibration : MonoBehaviour, IUiToggleState
         if (navigator == null)
         {
             navigator = GetComponent<YandexHelmetNavigator>();
+        }
+
+        if (buildingProbe == null)
+        {
+            buildingProbe = FindFirstObjectByType<SpatialMeshYandexBuildingProbe>();
         }
     }
 
