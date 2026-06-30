@@ -20,19 +20,46 @@ public struct PhoneRouteDestination
 }
 
 [Serializable]
+public struct PhoneRouteSelection
+{
+    public PhoneRouteDestination Start;
+    public PhoneRouteDestination Destination;
+
+    public bool IsValid => Start.IsValid && Destination.IsValid;
+    public bool HasStart => Start.IsValid;
+    public bool HasDestination => Destination.IsValid;
+
+    public GeoCoordinate StartCoordinate => Start.ToGeoCoordinate();
+    public GeoCoordinate DestinationCoordinate => Destination.ToGeoCoordinate();
+}
+
+[Serializable]
 public sealed class PhoneRouteDestinationPacket
 {
     public const string ExpectedMessageType = "route_destination";
-    public const int CurrentProtocolVersion = 1;
+    public const int LegacyProtocolVersion = 1;
+    public const int CurrentProtocolVersion = 2;
 
     public string MessageType = ExpectedMessageType;
     public int ProtocolVersion = CurrentProtocolVersion;
+    public PhoneRouteDestination Start;
     public PhoneRouteDestination Destination;
+
+    public bool HasRouteSelection => ProtocolVersion >= CurrentProtocolVersion && Start.IsValid && Destination.IsValid;
+    public bool HasLegacyDestination => ProtocolVersion == LegacyProtocolVersion && Destination.IsValid;
 
     public bool IsValid()
     {
         return MessageType == ExpectedMessageType &&
-               ProtocolVersion == CurrentProtocolVersion &&
-               Destination.IsValid;
+               (HasRouteSelection || HasLegacyDestination);
+    }
+
+    public PhoneRouteSelection ToRouteSelection()
+    {
+        return new PhoneRouteSelection
+        {
+            Start = Start,
+            Destination = Destination
+        };
     }
 }

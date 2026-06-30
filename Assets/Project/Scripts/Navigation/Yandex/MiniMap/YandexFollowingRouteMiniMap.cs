@@ -2,12 +2,14 @@ using System;
 using System.Net;
 using Project.Scripts.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
 {
     [Header("Dependencies")]
     [SerializeField] private PhoneLocationUdpReceiver locationReceiver;
+    [SerializeField] private PhoneRouteDestinationUdpReceiver routeReceiver;
     [SerializeField] private PhoneRouteDestinationYandexNavigatorBridge routeBridge;
     [SerializeField] private YandexHelmetNavigator navigator;
     [SerializeField] private YandexMiniMapTileLayer tileLayer;
@@ -18,6 +20,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
     [SerializeField] private CanvasGroup mapCanvasGroup;
     [SerializeField] private RectTransform mapContentRoot;
     [SerializeField] private RectTransform playerMarker;
+    [SerializeField] private RectTransform startMarker;
     [SerializeField] private RectTransform destinationMarker;
 
     [Header("View")]
@@ -29,6 +32,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
     [SerializeField, Range(0f, 30f)] private float headingSmoothing = 12f;
 
     private GeoCoordinate _center;
+    private GeoCoordinate? _start;
     private GeoCoordinate? _destination;
     private YandexRouteData _route;
     private bool _hasCenter;
@@ -50,6 +54,11 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         if (locationReceiver == null)
         {
             locationReceiver = GetComponent<PhoneLocationUdpReceiver>();
+        }
+
+        if (routeReceiver == null)
+        {
+            routeReceiver = GetComponent<PhoneRouteDestinationUdpReceiver>();
         }
 
         if (routeBridge == null)
@@ -76,6 +85,8 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         {
             mapContentRoot = tileLayer.transform as RectTransform;
         }
+
+        EnsureStartMarker();
     }
 
     private void OnEnable()
@@ -98,6 +109,21 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         {
             navigator.RouteRequestCompleted += OnRouteRequestCompleted;
             navigator.RouteDisabled += OnRouteDisabled;
+        }
+
+        if (routeReceiver != null)
+        {
+            routeReceiver.RouteSelectionReceived += OnRouteSelectionReceived;
+            routeReceiver.DestinationReceived += OnDestinationReceived;
+
+            if (routeReceiver.HasRouteSelection)
+            {
+                SetPendingRouteSelection(routeReceiver.LatestRouteSelection);
+            }
+            else if (routeReceiver.HasDestination)
+            {
+                SetPendingDestination(routeReceiver.LatestDestination);
+            }
         }
 
         if (!_hasCenter && navigator != null && navigator.CurrentCoordinate.HasValue)
@@ -125,6 +151,12 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
             navigator.RouteRequestCompleted -= OnRouteRequestCompleted;
             navigator.RouteDisabled -= OnRouteDisabled;
         }
+
+        if (routeReceiver != null)
+        {
+            routeReceiver.RouteSelectionReceived -= OnRouteSelectionReceived;
+            routeReceiver.DestinationReceived -= OnDestinationReceived;
+        }
     }
 
     private void Update()
@@ -138,7 +170,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
 
         if (_hasCenter)
         {
-            UpdateDestinationMarker();
+            UpdateRouteMarkers();
         }
     }
 
@@ -209,6 +241,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
             _hasCenter = false;
             tileLayer?.Clear();
             routeLine?.Clear();
+            SetMarkerVisible(startMarker, false);
             SetMarkerVisible(destinationMarker, false);
             return;
         }
@@ -221,6 +254,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
     public void SetRoute(YandexRouteData route)
     {
         _route = route;
+        _start = GetRouteStart(route) ?? _start;
         _destination = GetRouteDestination(route);
 
         if (routeLine != null)
@@ -229,20 +263,72 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         }
 
         RefreshRouteView();
-        UpdateDestinationMarker();
+        UpdateRouteMarkers();
     }
 
     public void ClearRoute()
     {
         _route = null;
+        _start = null;
         _destination = null;
         routeLine?.Clear();
+        SetMarkerVisible(startMarker, false);
         SetMarkerVisible(destinationMarker, false);
+    }
+
+    public void SetPendingRouteSelection(PhoneRouteSelection routeSelection)
+    {
+        if (!routeSelection.IsValid)
+        {
+            return;
+        }
+
+        _route = null;
+        routeLine?.Clear();
+        _start = routeSelection.StartCoordinate;
+        _destination = routeSelection.DestinationCoordinate;
+
+        if (!_hasCenter)
+        {
+            SetCenter(_start.Value);
+        }
+        else
+        {
+            RefreshAll();
+        }
+    }
+
+    public void SetPendingDestination(PhoneRouteDestination destination)
+    {
+        if (!destination.IsValid)
+        {
+            return;
+        }
+
+        _route = null;
+        routeLine?.Clear();
+        _destination = destination.ToGeoCoordinate();
+        RefreshAll();
     }
 
     private void OnLocationReceived(PhoneLocationSample sample, IPEndPoint remoteEndPoint)
     {
         ApplyLocation(sample);
+    }
+
+    private void OnRouteSelectionReceived(PhoneRouteSelection routeSelection, IPEndPoint remoteEndPoint)
+    {
+        SetPendingRouteSelection(routeSelection);
+    }
+
+    private void OnDestinationReceived(PhoneRouteDestination destination, IPEndPoint remoteEndPoint)
+    {
+        if (routeReceiver != null && routeReceiver.HasRouteSelection)
+        {
+            return;
+        }
+
+        SetPendingDestination(destination);
     }
 
     private void ApplyLocation(PhoneLocationSample sample)
@@ -274,7 +360,9 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         }
         else
         {
-            ClearRoute();
+            _route = null;
+            routeLine?.Clear();
+            RefreshAll();
         }
     }
 
@@ -302,7 +390,7 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
 
         RefreshRouteView();
         ApplyMapRotation();
-        UpdateDestinationMarker();
+        UpdateRouteMarkers();
     }
 
     private void RefreshRouteView()
@@ -330,19 +418,49 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
             : Vector3.zero;
     }
 
-    private void UpdateDestinationMarker()
+    private void UpdateRouteMarkers()
     {
-        if (destinationMarker == null || !_hasCenter || !_destination.HasValue)
+        UpdateMarker(startMarker, _start);
+        UpdateMarker(destinationMarker, _destination);
+    }
+
+    private void UpdateMarker(RectTransform marker, GeoCoordinate? coordinate)
+    {
+        if (marker == null || !_hasCenter || !coordinate.HasValue)
         {
-            SetMarkerVisible(destinationMarker, false);
+            SetMarkerVisible(marker, false);
             return;
         }
 
         var centerPixel = YandexMiniMapProjection.GeoToWorldPixel(_center, zoom);
-        var destinationPixel = YandexMiniMapProjection.GeoToWorldPixel(_destination.Value, zoom);
-        destinationMarker.anchoredPosition =
-            YandexMiniMapProjection.WorldPixelToUiOffset(destinationPixel, centerPixel, uiScale);
-        SetMarkerVisible(destinationMarker, true);
+        var markerPixel = YandexMiniMapProjection.GeoToWorldPixel(coordinate.Value, zoom);
+        marker.anchoredPosition =
+            YandexMiniMapProjection.WorldPixelToUiOffset(markerPixel, centerPixel, uiScale);
+        SetMarkerVisible(marker, true);
+    }
+
+    private void EnsureStartMarker()
+    {
+        if (startMarker != null || destinationMarker == null)
+        {
+            return;
+        }
+
+        var markerObject = Instantiate(destinationMarker.gameObject, destinationMarker.parent);
+        markerObject.name = "StartMarker";
+        startMarker = markerObject.transform as RectTransform;
+        SetMarkerTint(startMarker, new Color(0.22f, 0.68f, 0.32f, 1f));
+        SetMarkerVisible(startMarker, false);
+    }
+
+    private static GeoCoordinate? GetRouteStart(YandexRouteData route)
+    {
+        if (route == null || route.Points == null || route.Points.Count == 0)
+        {
+            return null;
+        }
+
+        return route.Points[0];
     }
 
     private static GeoCoordinate? GetRouteDestination(YandexRouteData route)
@@ -360,6 +478,20 @@ public sealed class YandexFollowingRouteMiniMap : MonoBehaviour, IUiToggleState
         if (marker != null && marker.gameObject.activeSelf != visible)
         {
             marker.gameObject.SetActive(visible);
+        }
+    }
+
+    private static void SetMarkerTint(RectTransform marker, Color color)
+    {
+        if (marker == null)
+        {
+            return;
+        }
+
+        var graphics = marker.GetComponentsInChildren<Graphic>(true);
+        for (var i = 0; i < graphics.Length; i++)
+        {
+            graphics[i].color = color;
         }
     }
 }

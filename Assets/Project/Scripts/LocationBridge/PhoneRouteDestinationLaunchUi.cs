@@ -31,6 +31,8 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
 
     private PhoneRouteDestination? _pendingDestination;
     private PhoneRouteDestination? _activeDestination;
+    private PhoneRouteSelection? _pendingRouteSelection;
+    private PhoneRouteSelection? _activeRouteSelection;
     private bool _isRouteRequesting;
     private bool _hasActiveRoute;
 
@@ -61,6 +63,7 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
     {
         if (receiver != null)
         {
+            receiver.RouteSelectionReceived += OnRouteSelectionReceived;
             receiver.DestinationReceived += OnDestinationReceived;
         }
 
@@ -87,6 +90,7 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
     {
         if (receiver != null)
         {
+            receiver.RouteSelectionReceived -= OnRouteSelectionReceived;
             receiver.DestinationReceived -= OnDestinationReceived;
         }
 
@@ -109,15 +113,20 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
 
     public void LaunchPendingRoute()
     {
-        if (!_pendingDestination.HasValue || navigatorBridge == null)
+        if (navigatorBridge == null)
         {
             RefreshView();
             return;
         }
 
-        if (navigatorBridge.Apply(_pendingDestination.Value))
+        var started = _pendingRouteSelection.HasValue
+            ? navigatorBridge.Apply(_pendingRouteSelection.Value)
+            : _pendingDestination.HasValue && navigatorBridge.Apply(_pendingDestination.Value);
+
+        if (started)
         {
             _activeDestination = _pendingDestination;
+            _activeRouteSelection = _pendingRouteSelection;
             _isRouteRequesting = true;
             _hasActiveRoute = false;
             RefreshView();
@@ -134,11 +143,17 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         _hasActiveRoute = false;
         _isRouteRequesting = false;
         _activeDestination = null;
+        _activeRouteSelection = null;
         RefreshView();
     }
 
     private void OnDestinationReceived(PhoneRouteDestination destination, IPEndPoint remoteEndPoint)
     {
+        if (receiver != null && receiver.HasRouteSelection)
+        {
+            return;
+        }
+
         var destinationChanged = !IsSameDestination(_pendingDestination, destination);
         if (destinationChanged && stopVisibleRouteWhenNewDestinationArrives && _hasActiveRoute && navigatorBridge != null)
         {
@@ -146,9 +161,28 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
             _hasActiveRoute = false;
             _isRouteRequesting = false;
             _activeDestination = null;
+            _activeRouteSelection = null;
         }
 
+        _pendingRouteSelection = null;
         _pendingDestination = destination;
+        RefreshView();
+    }
+
+    private void OnRouteSelectionReceived(PhoneRouteSelection routeSelection, IPEndPoint remoteEndPoint)
+    {
+        var routeChanged = !IsSameRouteSelection(_pendingRouteSelection, routeSelection);
+        if (routeChanged && stopVisibleRouteWhenNewDestinationArrives && _hasActiveRoute && navigatorBridge != null)
+        {
+            navigatorBridge.DisableRoute();
+            _hasActiveRoute = false;
+            _isRouteRequesting = false;
+            _activeDestination = null;
+            _activeRouteSelection = null;
+        }
+
+        _pendingRouteSelection = routeSelection;
+        _pendingDestination = routeSelection.Destination;
         RefreshView();
     }
 
@@ -164,12 +198,14 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         _hasActiveRoute = false;
         _isRouteRequesting = false;
         _activeDestination = null;
+        _activeRouteSelection = null;
         RefreshView();
     }
 
     private void RefreshView()
     {
-        var hasDestination = _pendingDestination.HasValue && _pendingDestination.Value.IsValid;
+        var hasRouteSelection = _pendingRouteSelection.HasValue && _pendingRouteSelection.Value.IsValid;
+        var hasDestination = hasRouteSelection || (_pendingDestination.HasValue && _pendingDestination.Value.IsValid);
 
         if (launchButton != null)
         {
@@ -185,14 +221,16 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
 
         if (addressLabel != null)
         {
-            addressLabel.text = hasDestination
+            addressLabel.text = hasRouteSelection
+                ? GetRouteText(_pendingRouteSelection.Value)
+                : hasDestination
                 ? GetAddressText(_pendingDestination.Value)
                 : emptyAddressText;
         }
 
         if (launchButtonLabel != null)
         {
-            launchButtonLabel.text = _hasActiveRoute && IsSameDestination(_pendingDestination, _activeDestination)
+            launchButtonLabel.text = _hasActiveRoute && IsSamePendingRouteActive()
                 ? relaunchText
                 : launchText;
         }
@@ -229,6 +267,21 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         return fallbackAddressText;
     }
 
+    private string GetRouteText(PhoneRouteSelection routeSelection)
+    {
+        return GetAddressText(routeSelection.Start) + " -> " + GetAddressText(routeSelection.Destination);
+    }
+
+    private bool IsSamePendingRouteActive()
+    {
+        if (_pendingRouteSelection.HasValue || _activeRouteSelection.HasValue)
+        {
+            return IsSameRouteSelection(_pendingRouteSelection, _activeRouteSelection);
+        }
+
+        return IsSameDestination(_pendingDestination, _activeDestination);
+    }
+
     private static bool IsSameDestination(PhoneRouteDestination? first, PhoneRouteDestination? second)
     {
         if (!first.HasValue || !second.HasValue)
@@ -240,5 +293,16 @@ public sealed class PhoneRouteDestinationLaunchUi : MonoBehaviour
         var b = second.Value;
         return Mathf.Abs((float)(a.Latitude - b.Latitude)) < 0.0000001f &&
                Mathf.Abs((float)(a.Longitude - b.Longitude)) < 0.0000001f;
+    }
+
+    private static bool IsSameRouteSelection(PhoneRouteSelection? first, PhoneRouteSelection? second)
+    {
+        if (!first.HasValue || !second.HasValue)
+        {
+            return false;
+        }
+
+        return IsSameDestination(first.Value.Start, second.Value.Start) &&
+               IsSameDestination(first.Value.Destination, second.Value.Destination);
     }
 }

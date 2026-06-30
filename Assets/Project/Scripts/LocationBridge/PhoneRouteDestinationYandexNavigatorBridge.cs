@@ -16,6 +16,7 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
     [SerializeField] private bool requirePhoneHeading = true;
 
     public PhoneRouteDestination? LatestAppliedDestination { get; private set; }
+    public PhoneRouteSelection? LatestAppliedRouteSelection { get; private set; }
     public event Action<YandexRouteResult> RouteRequestCompleted;
     public event Action RouteDisabled;
 
@@ -41,6 +42,7 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
     {
         if (receiver != null)
         {
+            receiver.RouteSelectionReceived += OnRouteSelectionReceived;
             receiver.DestinationReceived += OnDestinationReceived;
         }
 
@@ -55,6 +57,7 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
     {
         if (receiver != null)
         {
+            receiver.RouteSelectionReceived -= OnRouteSelectionReceived;
             receiver.DestinationReceived -= OnDestinationReceived;
         }
 
@@ -67,12 +70,35 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
 
     public bool ApplyLatestDestination()
     {
-        if (receiver == null || !receiver.HasDestination)
+        if (receiver == null || (!receiver.HasRouteSelection && !receiver.HasDestination))
         {
             return false;
         }
 
+        if (receiver.HasRouteSelection)
+        {
+            return Apply(receiver.LatestRouteSelection);
+        }
+
         return Apply(receiver.LatestDestination);
+    }
+
+    public bool Apply(PhoneRouteSelection routeSelection)
+    {
+        if (navigator == null || !routeSelection.IsValid)
+        {
+            return false;
+        }
+
+        if (!TryPrepareHeading())
+        {
+            return false;
+        }
+
+        LatestAppliedRouteSelection = routeSelection;
+        LatestAppliedDestination = routeSelection.Destination;
+        navigator.ShowRoute(routeSelection.StartCoordinate, routeSelection.DestinationCoordinate);
+        return true;
     }
 
     public bool Apply(PhoneRouteDestination destination)
@@ -92,22 +118,13 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
             return false;
         }
 
-        var destinationCoordinate = destination.ToGeoCoordinate();
-        var headingApplied = locationBridge != null &&
-                             locationBridge.TryAlignGeographicNorthFromLatestHeading(true);
-        if (requirePhoneHeading && !headingApplied)
+        if (!TryPrepareHeading())
         {
-            Debug.LogWarning(
-                "Route was not started because the phone packet has no reliable compass heading.",
-                this);
             return false;
         }
 
-        if (headingApplied && locationBridge != null)
-        {
-            locationBridge.ApplyLatestLocation();
-        }
-
+        var destinationCoordinate = destination.ToGeoCoordinate();
+        LatestAppliedRouteSelection = null;
         LatestAppliedDestination = destination;
         navigator.ShowRouteTo(destinationCoordinate);
         return true;
@@ -126,9 +143,17 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
 
     private void OnDestinationReceived(PhoneRouteDestination destination, IPEndPoint remoteEndPoint)
     {
-        if (buildRouteOnDestinationReceived)
+        if (buildRouteOnDestinationReceived && (receiver == null || !receiver.HasRouteSelection))
         {
             Apply(destination);
+        }
+    }
+
+    private void OnRouteSelectionReceived(PhoneRouteSelection routeSelection, IPEndPoint remoteEndPoint)
+    {
+        if (buildRouteOnDestinationReceived)
+        {
+            Apply(routeSelection);
         }
     }
 
@@ -140,5 +165,20 @@ public sealed class PhoneRouteDestinationYandexNavigatorBridge : MonoBehaviour
     private void OnNavigatorRouteDisabled()
     {
         RouteDisabled?.Invoke();
+    }
+
+    private bool TryPrepareHeading()
+    {
+        var headingApplied = locationBridge != null &&
+                             locationBridge.TryAlignGeographicNorthFromLatestHeading(true);
+        if (requirePhoneHeading && !headingApplied)
+        {
+            Debug.LogWarning(
+                "Route was not started because the phone packet has no reliable compass heading.",
+                this);
+            return false;
+        }
+
+        return true;
     }
 }

@@ -24,15 +24,19 @@ public sealed class PhoneRouteDestinationUdpReceiver : MonoBehaviour
     private Thread _thread;
     private volatile bool _isListening;
     private PhoneRouteDestination _latestDestination;
+    private PhoneRouteSelection _latestRouteSelection;
     private IPEndPoint _latestRemoteEndPoint;
 
     public event Action<PhoneRouteDestination, IPEndPoint> DestinationReceived;
+    public event Action<PhoneRouteSelection, IPEndPoint> RouteSelectionReceived;
     public event Action<string> Failed;
 
     public int ListenPort => listenPort;
     public bool IsListening => _isListening;
     public bool HasDestination { get; private set; }
+    public bool HasRouteSelection { get; private set; }
     public PhoneRouteDestination LatestDestination => _latestDestination;
+    public PhoneRouteSelection LatestRouteSelection => _latestRouteSelection;
     public IPEndPoint LatestRemoteEndPoint => _latestRemoteEndPoint;
 
     private void OnEnable()
@@ -171,6 +175,18 @@ public sealed class PhoneRouteDestinationUdpReceiver : MonoBehaviour
         HasDestination = true;
         _latestDestination = packet.Destination;
         _latestRemoteEndPoint = rawPacket.RemoteEndPoint;
+
+        if (packet.HasRouteSelection)
+        {
+            HasRouteSelection = true;
+            _latestRouteSelection = packet.ToRouteSelection();
+            RouteSelectionReceived?.Invoke(_latestRouteSelection, rawPacket.RemoteEndPoint);
+        }
+        else
+        {
+            HasRouteSelection = false;
+        }
+
         DestinationReceived?.Invoke(_latestDestination, rawPacket.RemoteEndPoint);
     }
 
